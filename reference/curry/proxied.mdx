@@ -1,0 +1,51 @@
+---
+title: "proxied — create a dynamic property handler"
+description: "Return a Proxy object that intercepts every property access and passes the property name to your handler, letting you generate values on demand for any key."
+---
+
+`proxied` wraps a handler function in a JavaScript `Proxy` so that accessing any property on the returned object calls `handler(propertyName)` and returns the result. No properties are stored — every access is computed live. This is useful for building dynamic translation objects, CSS-in-JS utilities, or any API where the set of valid keys is open-ended or unknown at build time.
+
+```typescript
+function proxied<T, K>(
+  handler: (propertyName: T) => K
+): Record<string, K>
+```
+
+<ParamField path="handler" type="(propertyName: T) => K" required>
+  A function called on every property access. Receives the accessed property name and returns the value to hand back to the caller.
+</ParamField>
+
+Returns a `Record<string, K>` backed by a `Proxy`. Every property access dynamically invokes `handler` rather than reading a stored value.
+
+```typescript
+import { proxied } from 'radash'
+
+// Dynamic translations object
+const i18n = proxied((key: string) => {
+  const translations: Record<string, string> = {
+    hello: 'Hola',
+    goodbye: 'Adiós',
+  }
+  return translations[key] ?? key
+})
+
+i18n.hello    // => 'Hola'
+i18n.goodbye  // => 'Adiós'
+i18n.missing  // => 'missing' (key returned as-is)
+
+// Dynamic CSS-in-JS utility — generate class names on access
+const css = proxied((className: string) => `app__${className}`)
+
+css.header   // => 'app__header'
+css.button   // => 'app__button'
+css.sidebar  // => 'app__sidebar'
+
+// Lazy API client — generate endpoint helpers dynamically
+const api = proxied((resource: string) => ({
+  list: () => fetch(`/api/${resource}`),
+  get: (id: string) => fetch(`/api/${resource}/${id}`),
+}))
+
+api.users.list()       // GET /api/users
+api.products.get('1')  // GET /api/products/1
+```

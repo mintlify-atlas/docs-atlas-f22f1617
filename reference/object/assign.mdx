@@ -1,0 +1,52 @@
+---
+title: "assign — deep merge two objects recursively"
+description: "Recursively merge two same-typed objects, combining nested child objects and letting the override object win for all primitive and array values."
+---
+
+`assign` performs a deep merge of two objects of the same type. When both objects share a key whose value is itself an object, `assign` recurses into it and merges those child properties too. For any other value type — primitives, arrays, or missing keys — the value from `override` takes precedence over the value in `initial`.
+
+```typescript
+function assign<X extends Record<string | symbol | number, any>>(
+  initial: X,
+  override: X
+): X
+```
+
+<ParamField path="initial" type="X" required>
+  The base object. Its values are used wherever `override` does not provide a replacement.
+</ParamField>
+
+<ParamField path="override" type="X" required>
+  The object whose values win during the merge. Child objects are recursively merged; all other values replace those in `initial`.
+</ParamField>
+
+Returns a new object of type `X` that is the deep-merged result of `initial` and `override`.
+
+```typescript
+import { assign } from 'radash'
+
+// Primitive override
+const a = { name: 'ra', age: 5000 }
+const b = { name: 'zeus', age: 3000 }
+assign(a, b)
+// => { name: 'zeus', age: 3000 }
+
+// Nested object merge
+const profile = {
+  user: { name: 'ra', role: 'admin' },
+  theme: 'dark',
+}
+const update = {
+  user: { name: 'hathor' },
+  theme: 'light',
+}
+assign(profile, update)
+// => { user: { name: 'hathor', role: 'admin' }, theme: 'light' }
+// Note: user.role is preserved because user is a nested object
+
+// Arrays are replaced, not merged
+const c = { tags: ['a', 'b'] }
+const d = { tags: ['c'] }
+assign(c, d)
+// => { tags: ['c'] }
+```

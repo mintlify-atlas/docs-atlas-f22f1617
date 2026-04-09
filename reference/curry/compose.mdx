@@ -1,0 +1,55 @@
+---
+title: "compose — wrap functions right to left (middleware)"
+description: "Build a middleware pipeline where each function wraps the next, receiving a `next` callback it can call before, after, or conditionally around the inner logic."
+---
+
+`compose` builds a middleware stack. Each function in the list (except the last) receives a `next` callback and returns a new function — when that function is called, it can run code before and after calling `next`. The last argument is the innermost function with no wrapping. This is the right tool when you need cross-cutting behaviour such as logging, caching, or authorization that wraps around a core operation.
+
+```typescript
+function compose<F1Result, F1Args extends any[], F1NextArgs extends any[], LastResult>(
+  f1: (next: (...args: F1NextArgs) => LastResult) => (...args: F1Args) => F1Result,
+  last: (...args: F1NextArgs) => LastResult
+): (...args: F1Args) => F1Result
+```
+
+<ParamField path="f1...fN" type="(next: (...args) => Result) => (...args) => Result" required>
+  A middleware function. Receives the next layer as `next` and returns a function. Call `next` inside to continue down the stack.
+</ParamField>
+
+<ParamField path="last" type="(...args) => LastResult" required>
+  The innermost function. Executed when every middleware has called `next`.
+</ParamField>
+
+Returns a function with the same signature as the outermost middleware's returned function.
+
+```typescript
+import { compose } from 'radash'
+
+const withLogging = (next: (x: number) => number) => (x: number) => {
+  console.log('input', x)
+  const result = next(x)
+  console.log('output', result)
+  return result
+}
+
+const withDoubling = (next: (x: number) => number) => (x: number) => {
+  return next(x * 2)
+}
+
+const add1 = (x: number) => x + 1
+
+// Executes: withLogging → withDoubling → add1
+const pipeline = compose(withLogging, withDoubling, add1)
+pipeline(5)
+// logs: input 5
+// logs: output 11
+// returns: 11  (5 * 2 + 1)
+
+// Middleware can also short-circuit without calling next
+const withAuth = (next: (req: Request) => Response) => (req: Request) => {
+  if (!req.headers.get('Authorization')) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+  return next(req)
+}
+```

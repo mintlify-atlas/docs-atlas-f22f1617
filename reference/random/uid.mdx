@@ -1,0 +1,40 @@
+---
+title: "uid — generate a random alphanumeric string"
+description: "Create a random string of a given length from an alphanumeric character set, with an optional extra set of special characters to include in the pool."
+---
+
+`uid` builds a random string by repeatedly drawing characters from a pool of `A–Z`, `a–z`, and `0–9`. You can extend that pool with any additional characters — punctuation, symbols, or anything else — by passing them as the `specials` argument. The function is useful for generating IDs, tokens, nonces, or random display codes.
+
+```typescript
+function uid(length: number, specials?: string): string
+```
+
+<ParamField path="length" type="number" required>
+  The number of characters in the generated string.
+</ParamField>
+
+<ParamField path="specials" type="string">
+  Additional characters to include in the selection pool alongside the default alphanumeric set. Defaults to `''` (no extra characters). Each character in the string is added individually to the pool, so duplicates increase the probability of that character being chosen.
+</ParamField>
+
+Returns a `string` of the requested `length` whose characters are drawn uniformly at random from the character pool.
+
+```typescript
+import { uid } from 'radash'
+
+// Alphanumeric only (default)
+uid(8)   // => e.g. 'aB3xKp1Q'
+uid(16)  // => e.g. 'Zr9mTqL4kWsX2yNp'
+
+// Including special characters
+uid(6, '!@#')   // => e.g. 'a!3xK@'
+uid(12, '-_.')   // => e.g. 'aB3_xKp-1Q.z'
+
+// Short tokens and codes
+const sessionToken = uid(32)
+const shortCode = uid(6)
+```
+
+<Note>
+  `uid` is not cryptographically secure. It relies on `Math.random`, which is suitable for non-security-sensitive identifiers. For cryptographic tokens, use the Web Crypto API (`crypto.getRandomValues`) or Node's `crypto` module.
+</Note>

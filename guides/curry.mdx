@@ -1,0 +1,254 @@
+---
+title: "Functional patterns with Radash curry"
+description: "Radash's curry module provides compose, chain, partial, memo, debounce, throttle, callable, and proxied for building reusable, composable functions."
+keywords: ["curry", "compose", "chain", "partial", "memo", "debounce", "throttle", "callable", "proxied", "functional programming"]
+---
+
+The curry module in Radash provides utilities for composing, partially applying, memoizing, and rate-limiting functions. Most of these are familiar functional programming concepts with TypeScript-friendly signatures and practical additions like TTL-based cache expiry, debounce flushing, and callable objects.
+
+## Function composition
+
+### chain
+
+`chain` pipes the output of each function into the input of the next, left to right. The first function can accept multiple arguments; subsequent functions accept a single argument.
+
+```typescript
+import { chain } from 'radash'
+
+const process = chain(
+  (s: string) => s.trim(),
+  (s: string) => s.toLowerCase(),
+  (s: string) => s.replace(/\s+/g, '-')
+)
+
+process('  Hello World  ')  // 'hello-world'
+```
+
+### compose
+
+`compose` uses middleware-style wrapping: each function receives the `next` function and returns a new function. Functions are applied right to left (the last argument is the innermost function). This is the pattern used for Express middleware, Redux enhancers, and similar pipelines.
+
+```typescript
+import { compose } from 'radash'
+
+const withLogging = (next: (n: number) => number) => (n: number) => {
+  console.log('input:', n)
+  const result = next(n)
+  console.log('output:', result)
+  return result
+}
+
+const withValidation = (next: (n: number) => number) => (n: number) => {
+  if (n < 0) throw new Error('Must be non-negative')
+  return next(n)
+}
+
+const double = (n: number) => n * 2
+
+const safeDouble = compose(withLogging, withValidation, double)
+safeDouble(5)   // logs 'input: 5', 'output: 10', returns 10
+safeDouble(-1)  // logs 'input: -1', throws
+```
+
+<Note>
+The key difference: `chain` passes the **return value** of each function to the next. `compose` passes the **next function itself**, letting middleware intercept before and after the call.
+</Note>
+
+## Partial application
+
+### partial
+
+`partial` pre-fills leading arguments of a function, returning a new function that only needs the remaining arguments.
+
+```typescript
+import { partial } from 'radash'
+
+const add = (a: number, b: number, c: number) => a + b + c
+
+const addFrom10 = partial(add, 10)
+addFrom10(3, 4)   // 17
+
+const add10and3 = partial(add, 10, 3)
+add10and3(4)      // 17
+```
+
+### partob
+
+`partob` is like `partial` but for functions that take a single object argument. It pre-fills a subset of the object's properties.
+
+```typescript
+import { partob } from 'radash'
+
+type SearchParams = { query: string; page: number; limit: number }
+const search = (params: SearchParams) => fetchResults(params)
+
+const searchPage1 = partob(search, { page: 1, limit: 20 })
+
+searchPage1({ query: 'radash' })
+// calls search({ query: 'radash', page: 1, limit: 20 })
+```
+
+## Memoization
+
+### memo
+
+`memo` wraps a function so that repeated calls with the same arguments return the cached result rather than recomputing.
+
+```typescript
+import { memo } from 'radash'
+
+const expensiveCalc = memo((n: number) => {
+  console.log('computing...')
+  return n * n
+})
+
+expensiveCalc(4)   // 'computing...' → 16
+expensiveCalc(4)   // (cache hit) → 16
+expensiveCalc(5)   // 'computing...' → 25
+```
+
+**TTL (time-to-live):** Pass `ttl` in milliseconds to expire cached entries.
+
+```typescript
+const cachedFetch = memo(fetchUserProfile, {
+  ttl: 60_000,               // entries expire after 60 seconds
+  key: (id: string) => id    // optional: custom cache key function
+})
+```
+
+**Custom key:** By default, the cache key is `JSON.stringify({ args })`. Supply a `key` function for faster or more targeted keying.
+
+```typescript
+const getUserById = memo(fetchUser, {
+  key: (id: number) => String(id)
+})
+```
+
+<Warning>
+`memo` stores references to cached values indefinitely (unless TTL is set). Avoid memoizing functions that receive large objects or produce large results without also setting a TTL.
+</Warning>
+
+## Rate limiting
+
+### debounce
+
+`debounce` delays invoking a function until a given number of milliseconds have passed since the last call. Useful for search inputs, window resize handlers, or any callback you want to "settle" before firing.
+
+```typescript
+import { debounce } from 'radash'
+
+const saveSearch = debounce({ delay: 300 }, (query: string) => {
+  sendAnalytics(query)
+})
+
+// Only fires 300ms after the user stops typing
+input.addEventListener('input', e => saveSearch(e.target.value))
+```
+
+The returned function has three extra methods:
+
+```typescript
+saveSearch.isPending()         // true if a call is queued
+saveSearch.cancel()            // cancels any pending invocation permanently
+saveSearch.flush('final query') // fires immediately, bypassing the delay
+```
+
+<Tip>
+Call `debounced.cancel()` in a React `useEffect` cleanup to prevent state updates on unmounted components.
+</Tip>
+
+### throttle
+
+`throttle` ensures a function is called at most once per interval, ignoring calls that arrive while the interval is active.
+
+```typescript
+import { throttle } from 'radash'
+
+const onScroll = throttle({ interval: 100 }, () => {
+  updateScrollProgress()
+})
+
+window.addEventListener('scroll', onScroll)
+
+// Check whether a call is currently being throttled
+onScroll.isThrottled()   // boolean
+```
+
+<Note>
+Unlike `debounce`, `throttle` fires immediately on the first call and then blocks for `interval` ms. `debounce` always delays.
+</Note>
+
+## Advanced patterns
+
+### callable
+
+`callable` creates an object that can also be called as a function. The returned value has all the object's properties and can be invoked directly.
+
+```typescript
+import { callable } from 'radash'
+
+const api = callable(
+  {
+    baseUrl: 'https://api.example.com',
+    timeout: 5000,
+  },
+  self => (path: string) => fetch(`${self.baseUrl}${path}`)
+)
+
+api.baseUrl            // 'https://api.example.com'
+api('/users')          // calls fetch(...)
+```
+
+This is useful when you need a function with configuration properties attached to it — a common pattern for SDK clients.
+
+### proxied
+
+`proxied` creates a `Proxy` object where every property access dynamically calls a handler. This enables virtual properties without pre-defining them.
+
+```typescript
+import { proxied } from 'radash'
+
+const icons = proxied((name: string) => `/icons/${name}.svg`)
+
+icons.home      // '/icons/home.svg'
+icons.settings  // '/icons/settings.svg'
+icons.profile   // '/icons/profile.svg'
+```
+
+<AccordionGroup>
+  <Accordion title="Using proxied for dynamic enum-like access">
+    ```typescript
+    import { proxied } from 'radash'
+
+    // Create a type-safe flag checker without listing all flags
+    const featureFlags = proxied((flag: string) => {
+      return process.env[`FEATURE_${flag.toUpperCase()}`] === 'true'
+    })
+
+    if (featureFlags.newDashboard) {
+      renderNewDashboard()
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Combining chain with partial for pipelines">
+    ```typescript
+    import { chain, partial } from 'radash'
+
+    const clamp = (min: number, max: number, n: number) =>
+      Math.min(Math.max(n, min), max)
+
+    const clamp0to100 = partial(clamp, 0, 100)
+
+    const normalizeScore = chain(
+      (raw: string) => parseFloat(raw),
+      clamp0to100,
+      (n: number) => Math.round(n)
+    )
+
+    normalizeScore('  73.6 ')   // 74
+    normalizeScore('200')       // 100
+    normalizeScore('-5')        // 0
+    ```
+  </Accordion>
+</AccordionGroup>

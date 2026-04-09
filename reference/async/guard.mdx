@@ -1,0 +1,47 @@
+---
+title: "guard — catch errors and return undefined"
+description: "Wrap a function so that errors return undefined instead of throwing. Optionally supply a predicate to selectively rethrow specific errors."
+---
+
+`guard` wraps a function and swallows any error it throws, returning `undefined` in its place. This is useful for optional operations where the absence of a result is acceptable and you want to avoid a `try/catch` block. You can pass a `shouldGuard` predicate to gain fine-grained control: when the predicate returns `false`, the error is rethrown as normal.
+
+```typescript
+function guard<TFunction extends () => any>(
+  func: TFunction,
+  shouldGuard?: (err: any) => boolean
+): ReturnType<TFunction> extends Promise<any>
+  ? Promise<Awaited<ReturnType<TFunction>> | undefined>
+  : ReturnType<TFunction> | undefined
+```
+
+<ParamField path="func" type="() => any" required>
+  The function to execute. Can be synchronous or async. `guard` detects whether the return value is a `Promise` and handles both cases transparently.
+</ParamField>
+
+<ParamField path="shouldGuard" type="(err: any) => boolean">
+  An optional predicate called with the thrown error. When it returns `true`, the error is swallowed and `undefined` is returned. When it returns `false`, the error is rethrown. If omitted, all errors are guarded.
+</ParamField>
+
+Returns the result of `func` if it succeeds, or `undefined` if it fails and the error is guarded. For async functions the return type is `Promise<Awaited<ReturnType<TFunction>> | undefined>`. For sync functions it is `ReturnType<TFunction> | undefined`.
+
+```typescript
+import { guard } from 'radash'
+
+// Fall back to an empty array when the fetch fails
+const users = await guard(fetchUsers)() ?? []
+
+// Only guard 404 errors; rethrow everything else
+const profile = await guard(
+  () => fetchProfile(userId),
+  (err) => err.status === 404
+)() ?? defaultProfile
+
+// Sync usage
+const parsed = guard(() => JSON.parse(rawInput))() ?? {}
+
+// Conditional fallback with nullish coalescing
+const settings = await guard(loadUserSettings)() ?? DEFAULT_SETTINGS
+if (!settings) {
+  console.warn('Could not load settings, using defaults')
+}
+```

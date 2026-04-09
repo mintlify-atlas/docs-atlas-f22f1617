@@ -1,0 +1,51 @@
+---
+title: "map — async array map with serial execution"
+description: "Transform every element of an array with an async mapper function, awaiting each result before moving to the next item in the array."
+---
+
+`map` works like the built-in `Array.prototype.map` but accepts an async mapper and awaits each call before proceeding to the next. Because items are processed one at a time in order, it is safe to use in situations where parallel execution would cause race conditions or exceed rate limits. When you need concurrent processing, use `parallel` instead.
+
+```typescript
+async function map<T, K>(
+  array: readonly T[],
+  asyncMapFunc: (item: T, index: number) => Promise<K>
+): Promise<K[]>
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to transform. Returns an empty array when the input is nullish.
+</ParamField>
+
+<ParamField path="asyncMapFunc" type="(item: T, index: number) => Promise<K>" required>
+  An async function called for each element. Receives the current item and its zero-based index. Each call is awaited before the next begins.
+</ParamField>
+
+Returns a `Promise<K[]>` that resolves to an array of transformed values in the same order as the input. Rejects if any invocation of `asyncMapFunc` rejects.
+
+<Note>
+  `map` processes items serially — one at a time. Use `parallel` when you need to run multiple operations concurrently with a controlled concurrency limit.
+</Note>
+
+```typescript
+import { map } from 'radash'
+
+// Enrich each user with their latest order
+type User = { id: number; name: string }
+type EnrichedUser = User & { latestOrder: Order | null }
+
+const users: User[] = await fetchUsers()
+
+const enriched: EnrichedUser[] = await map(users, async (user) => {
+  const latestOrder = await fetchLatestOrder(user.id)
+  return { ...user, latestOrder }
+})
+
+// Process uploaded files one by one to avoid storage API limits
+const fileKeys = ['photo.jpg', 'resume.pdf', 'cover.docx']
+
+const uploadedUrls = await map(fileKeys, async (key, index) => {
+  console.log(`Uploading file ${index + 1} of ${fileKeys.length}: ${key}`)
+  const url = await uploadFile(key)
+  return url
+})
+```

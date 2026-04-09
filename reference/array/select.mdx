@@ -1,0 +1,66 @@
+---
+title: "select — filter and transform in one pass"
+description: "Filter and map an array simultaneously in a single iteration, applying a condition to decide inclusion and a mapper to produce the output value."
+---
+
+`select` combines the behaviour of `Array.filter` and `Array.map` into one traversal. For each element it first evaluates the `condition`; if the condition returns `false` the element is skipped entirely. If it returns `true`, the element is passed to `mapper` and the resulting value is added to the output array. Because the two operations share a single `reduce`, the array is never iterated more than once.
+
+```typescript
+function select<T, K>(
+  array: readonly T[],
+  mapper: (item: T, index: number) => K,
+  condition: (item: T, index: number) => boolean
+): K[]
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to process. Returns an empty array when `array` is falsy.
+</ParamField>
+
+<ParamField path="mapper" type="(item: T, index: number) => K" required>
+  A transformation function applied to each element that passes the condition. Receives the element and its original index.
+</ParamField>
+
+<ParamField path="condition" type="(item: T, index: number) => boolean" required>
+  A predicate that determines whether an element is included. Receives the element and its original index.
+</ParamField>
+
+Returns a `K[]` containing the mapped values of every element for which `condition` returned `true`.
+
+```typescript
+import { select } from 'radash'
+
+// Square numbers greater than 2
+select([1, 2, 3, 4], x => x * x, x => x > 2)
+// => [9, 16]
+
+// Extract names of active users
+type User = { name: string; active: boolean; age: number }
+const users: User[] = [
+  { name: 'Alice', active: true, age: 30 },
+  { name: 'Bob', active: false, age: 25 },
+  { name: 'Carol', active: true, age: 28 },
+]
+
+select(users, u => u.name, u => u.active)
+// => ['Alice', 'Carol']
+
+// Use index in either callback
+select(
+  ['a', 'b', 'c', 'd'],
+  (item, idx) => `${idx}:${item}`,
+  (_item, idx) => idx % 2 === 0
+)
+// => ['0:a', '2:c']
+
+// Objects: filter and reshape in one pass
+type Order = { id: number; total: number; shipped: boolean }
+const orders: Order[] = [
+  { id: 1, total: 50, shipped: true },
+  { id: 2, total: 200, shipped: false },
+  { id: 3, total: 75, shipped: true },
+]
+
+select(orders, o => o.total, o => o.shipped)
+// => [50, 75]
+```

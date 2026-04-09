@@ -1,0 +1,59 @@
+---
+title: "camel / snake / pascal / dash / title — case conversion"
+description: "Convert strings between camelCase, snake_case, PascalCase, dash-case, Title Case, and sentence capitalization with a consistent set of simple functions."
+---
+
+Radash provides six case-conversion functions that all accept a `string` and return a `string`. Each one splits the input on whitespace, dots, dashes, underscores, and camelCase boundaries, then reassembles the words in the target format. `snake` additionally accepts an options object to control number splitting.
+
+```typescript
+function camel(str: string): string
+function snake(str: string, options?: { splitOnNumber?: boolean }): string
+function pascal(str: string): string
+function dash(str: string): string
+function title(str: string | null | undefined): string
+function capitalize(str: string): string
+```
+
+<ParamField path="str" type="string" required>
+  The source string to convert. `title` also accepts `null` or `undefined` and returns an empty string for falsy input.
+</ParamField>
+
+<ParamField path="options.splitOnNumber" type="boolean">
+  (`snake` only) When `true` (the default), a letter immediately followed by a digit is split into separate snake_case segments. Pass `false` to keep letter-digit sequences together.
+</ParamField>
+
+Each function returns a `string` in the corresponding case format. `title` and `capitalize` return `''` for empty or nullish input.
+
+```typescript
+import { camel, snake, pascal, dash, title, capitalize } from 'radash'
+
+// camel — words joined with a leading lowercase word
+camel('hello world')  // => 'helloWorld'
+camel('va va-VOOM')   // => 'vaVaVoom'
+camel('helloWorld')   // => 'helloWorld'
+
+// snake — words joined with underscores, all lowercase
+snake('hello world')  // => 'hello_world'
+snake('helloWord')    // => 'hello_word'
+snake('va va-VOOM')   // => 'va_va_voom'
+snake('myVar2x', { splitOnNumber: false }) // => 'my_var2x'
+
+// pascal — words joined with each word title-cased
+pascal('hello world') // => 'HelloWorld'
+pascal('va va boom')  // => 'VaVaBoom'
+
+// dash — words joined with hyphens, all lowercase
+dash('hello world')   // => 'hello-world'
+dash('va va_VOOM')    // => 'va-va-voom'
+dash('helloWord')     // => 'hello-word'
+
+// title — every word capitalized, split on all separators including camelCase
+title('hello world')  // => 'Hello World'
+title('root-hook')    // => 'Root Hook'
+title('queryItems')   // => 'Query Items'
+title(null)           // => ''
+
+// capitalize — only the first letter uppercased, rest lowercased
+capitalize('hello')       // => 'Hello'
+capitalize('va va voom')  // => 'Va va voom'
+```

@@ -1,0 +1,41 @@
+---
+title: "sift — remove all falsy values from an array"
+description: "Filter a mixed array down to only its truthy elements, stripping out null, undefined, false, empty string, 0, and 0n in a single pass."
+---
+
+`sift` is a typed wrapper around `Array.filter` that removes every falsy value — `null`, `undefined`, `false`, `''`, `0`, and `0n` — and narrows the element type to `T`. It is useful when working with arrays that may contain optional or nullable values, letting you clean them up before further processing without writing an inline predicate each time.
+
+```typescript
+type Falsy = null | undefined | false | '' | 0 | 0n
+
+function sift<T>(list: readonly (T | Falsy)[]): T[]
+```
+
+<ParamField path="list" type="readonly (T | Falsy)[]" required>
+  The source array, which may contain a mix of real values and falsy sentinels. Returns an empty array when the input is nullish.
+</ParamField>
+
+Returns a new `T[]` containing only the elements that are truthy. The original array is not modified.
+
+```typescript
+import { sift } from 'radash'
+
+// Strip all falsy sentinels from a mixed array
+sift([1, null, 2, undefined, 0, false, 3])
+// => [1, 2, 3]
+
+// Works with strings
+sift(['hello', '', null, 'world', undefined])
+// => ['hello', 'world']
+
+// Useful with arrays from optional object fields
+type User = { name: string; nickname?: string | null }
+const users: User[] = [
+  { name: 'Alice', nickname: 'ali' },
+  { name: 'Bob', nickname: null },
+  { name: 'Carol', nickname: '' },
+]
+
+const nicknames = sift(users.map(u => u.nickname))
+// => ['ali']
+```

@@ -1,0 +1,42 @@
+---
+title: "callable — make an object callable as a function"
+description: "Wrap an object and a function together so the result behaves as both — accessing properties returns object values while calling it invokes the function."
+---
+
+`callable` uses a `Proxy` to combine an object and a function into a single value. The returned value carries all the original object's properties and, when called, delegates to the function returned by `fn(self)`. This is useful when you want an API that is both a namespace of values and directly invokable.
+
+```typescript
+function callable<
+  TValue,
+  TObj extends Record<string | number | symbol, TValue>,
+  TFunc extends (...args: any) => any
+>(obj: TObj, fn: (self: TObj) => TFunc): TObj & TFunc
+```
+
+<ParamField path="obj" type="TObj" required>
+  The source object whose properties will be accessible on the returned value.
+</ParamField>
+
+<ParamField path="fn" type="(self: TObj) => TFunc" required>
+  A factory that receives a snapshot of the object and returns the function to invoke when the returned value is called.
+</ParamField>
+
+Returns a value typed as `TObj & TFunc` — all object properties are present and the value is directly callable.
+
+```typescript
+import { callable } from 'radash'
+
+const car = callable({ wheels: 4, brand: 'Acme' }, self => () => {
+  return `driving a ${self.brand} with ${self.wheels} wheels`
+})
+
+car.wheels  // => 4
+car.brand   // => 'Acme'
+car()       // => 'driving a Acme with 4 wheels'
+
+// Works with arguments too
+const multiplier = callable({ factor: 3 }, self => (x: number) => x * self.factor)
+
+multiplier.factor  // => 3
+multiplier(5)      // => 15
+```

@@ -1,0 +1,60 @@
+---
+title: "merge — replace matched items from another list"
+description: "Iterate a root array and replace any item whose matcher key matches an item in the others array, preserving root order and unmatched items."
+---
+
+`merge` walks the `root` array in order and, for each element, looks for an element in `others` whose `matcher` key is identical. If a match is found, the item from `others` replaces the item from `root`; if no match is found, the original item is kept. Items in `others` that have no counterpart in `root` are silently ignored. The result always has the same length as `root`.
+
+```typescript
+function merge<T>(
+  root: readonly T[],
+  others: readonly T[],
+  matcher: (item: T) => any
+): T[]
+```
+
+<ParamField path="root" type="readonly T[]" required>
+  The base array whose structure and order is preserved in the output.
+</ParamField>
+
+<ParamField path="others" type="readonly T[]" required>
+  The array of replacement candidates. When `matcher(root[i]) === matcher(others[j])`, `others[j]` replaces `root[i]` in the output.
+</ParamField>
+
+<ParamField path="matcher" type="(item: T) => any" required>
+  A function that extracts a comparable identity value from an element. Two elements are considered a match when their extracted values are strictly equal (`===`).
+</ParamField>
+
+Returns a `T[]` of the same length as `root`, with matched elements replaced by their counterparts from `others`.
+
+```typescript
+import { merge } from 'radash'
+
+// Merge updated user records into a base list
+type User = { id: number; name: string; score: number }
+
+const base: User[] = [
+  { id: 1, name: 'Alice', score: 80 },
+  { id: 2, name: 'Bob', score: 70 },
+  { id: 3, name: 'Carol', score: 90 },
+]
+
+const updates: User[] = [
+  { id: 2, name: 'Bob', score: 95 },  // Bob's score updated
+]
+
+merge(base, updates, u => u.id)
+// => [
+//   { id: 1, name: 'Alice', score: 80 },
+//   { id: 2, name: 'Bob', score: 95 },   <- replaced
+//   { id: 3, name: 'Carol', score: 90 },
+// ]
+
+// No matches — root is returned unchanged
+merge(base, [{ id: 99, name: 'Ghost', score: 0 }], u => u.id)
+// => (same as base)
+
+// Items in others with no root counterpart are ignored
+merge([{ id: 1, name: 'Alice', score: 80 }], updates, u => u.id)
+// => [{ id: 1, name: 'Alice', score: 80 }]
+```

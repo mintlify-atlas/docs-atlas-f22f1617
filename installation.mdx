@@ -1,0 +1,83 @@
+---
+title: "Installing Radash"
+description: "Install Radash via npm, yarn, or pnpm. Requires Node.js 14.18+. Ships TypeScript declarations and supports both ESM and CommonJS module formats."
+---
+
+Radash is published to npm and supports both ESM (`import`) and CommonJS (`require`). It has zero runtime dependencies and ships TypeScript declaration files.
+
+## Requirements
+
+- **Node.js** 14.18.0 or higher
+- A package manager: npm, yarn, or pnpm
+
+## Install
+
+<CodeGroup>
+```bash npm
+npm install radash
+```
+```bash yarn
+yarn add radash
+```
+```bash pnpm
+pnpm add radash
+```
+</CodeGroup>
+
+## Import styles
+
+Radash supports named imports (recommended for tree-shaking) and namespace imports:
+
+<Tabs>
+  <Tab title="Named imports (recommended)">
+    ```typescript
+    import { group, sort, tryit, parallel } from 'radash'
+    ```
+    Named imports allow your bundler to tree-shake unused functions, keeping your bundle small.
+  </Tab>
+  <Tab title="Namespace import">
+    ```typescript
+    import * as _ from 'radash'
+
+    _.sort(items, x => x.rank)
+    _.group(items, x => x.category)
+    ```
+    Useful when you use many Radash functions throughout a file.
+  </Tab>
+  <Tab title="CommonJS">
+    ```javascript
+    const { group, sort } = require('radash')
+    // or
+    const _ = require('radash')
+    ```
+  </Tab>
+</Tabs>
+
+## TypeScript setup
+
+Radash ships its own `d.ts` declaration files — no `@types/` package needed. All generics are inferred automatically:
+
+```typescript
+import { sort, group } from 'radash'
+
+type God = { name: string; rank: number; culture: string }
+const gods: God[] = [...]
+
+const sorted = sort(gods, g => g.rank)
+// sorted: God[]  ← TypeScript knows the type
+
+const grouped = group(gods, g => g.culture)
+// grouped: Partial<Record<string, God[]>>  ← fully typed
+```
+
+<Note>
+No extra configuration is required. Radash works with any `tsconfig.json` that targets ES2015 or later.
+</Note>
+
+## Verify the install
+
+```typescript
+import { uid } from 'radash'
+
+console.log(uid(8)) // => e.g. "aB3xKp1Q"
+```

@@ -1,0 +1,63 @@
+---
+title: "first / last — get array endpoints safely"
+description: "Return the first or last item in an array without throwing on empty input, with an optional default value when the array is empty or nullish."
+---
+
+`first` and `last` provide safe access to the first and last elements of an array. Instead of throwing or returning `undefined` unexpectedly when the array is empty, both functions accept an optional `defaultValue` so callers can express a meaningful fallback inline.
+
+```typescript
+function first<T>(
+  array: readonly T[],
+  defaultValue?: T | null
+): T | undefined
+
+function last<T>(
+  array: readonly T[],
+  defaultValue?: T | null
+): T | undefined
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array. When the array is empty or nullish the function falls back to `defaultValue`.
+</ParamField>
+
+<ParamField path="defaultValue" type="T | null">
+  Value returned when the array is empty. Defaults to `undefined`.
+</ParamField>
+
+Returns the first (or last) element of type `T`, or the `defaultValue` (which is `undefined` when omitted).
+
+```typescript
+import { first, last } from 'radash'
+
+// Basic usage
+const letters = ['a', 'b', 'c']
+first(letters) // => 'a'
+last(letters)  // => 'c'
+
+// Empty array without default
+first([]) // => undefined
+last([])  // => undefined
+
+// Empty array with default
+first([], 'fallback') // => 'fallback'
+last([], 'fallback')  // => 'fallback'
+
+// Single element
+first([42]) // => 42
+last([42])  // => 42
+
+// Objects
+type User = { id: number; name: string }
+const users: User[] = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Carol' },
+]
+
+first(users) // => { id: 1, name: 'Alice' }
+last(users)  // => { id: 3, name: 'Carol' }
+
+const defaultUser: User = { id: 0, name: 'Guest' }
+first([], defaultUser) // => { id: 0, name: 'Guest' }
+```

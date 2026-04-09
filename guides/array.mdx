@@ -1,0 +1,366 @@
+---
+title: "Working with arrays in Radash"
+description: "Radash's array module provides composable, immutable utilities for grouping, filtering, transforming, and iterating over arrays in TypeScript."
+keywords: ["array", "group", "objectify", "fork", "select", "boil", "cluster", "unique", "diff", "toggle", "sift", "iterate", "range", "list"]
+---
+
+Radash's array module is built around a simple principle: every function returns a new value and leaves the original untouched. Whether you're partitioning a list of orders by status, building a lookup map from an API response, or iterating a fixed number of times, the array module gives you the right tool without requiring you to chain `.filter().map().reduce()` manually.
+
+## Sorting
+
+Radash provides two sort functions depending on whether you're sorting by a number or a string.
+
+### Numeric sort
+
+`sort` sorts by a numeric getter. Pass `desc: true` to reverse.
+
+```typescript
+import { sort } from 'radash'
+
+const users = [
+  { name: 'Alice', age: 32 },
+  { name: 'Bob', age: 25 },
+  { name: 'Carol', age: 28 },
+]
+
+const byAge = sort(users, u => u.age)
+// [{ name: 'Bob', age: 25 }, { name: 'Carol', age: 28 }, { name: 'Alice', age: 32 }]
+
+const newestFirst = sort(users, u => u.age, true)
+```
+
+### Alphabetical sort
+
+`alphabetical` uses `localeCompare` so it handles Unicode correctly.
+
+```typescript
+import { alphabetical } from 'radash'
+
+const sorted = alphabetical(users, u => u.name)
+// sorted by name A → Z
+
+const reversed = alphabetical(users, u => u.name, 'desc')
+```
+
+<Note>
+Neither `sort` nor `alphabetical` modifies the original array — both call `.slice()` internally before sorting.
+</Note>
+
+## Grouping
+
+### group
+
+`group` partitions an array into a dictionary keyed by whatever your callback returns. The return type is `Partial<Record<Key, T[]>>` — keys are partial because not every key will necessarily have items.
+
+```typescript
+import { group } from 'radash'
+
+const orders = [
+  { id: 1, status: 'pending' },
+  { id: 2, status: 'shipped' },
+  { id: 3, status: 'pending' },
+  { id: 4, status: 'delivered' },
+]
+
+const byStatus = group(orders, o => o.status)
+// {
+//   pending: [{ id: 1, ... }, { id: 3, ... }],
+//   shipped: [{ id: 2, ... }],
+//   delivered: [{ id: 4, ... }]
+// }
+
+// Safe access — keys are partial
+const pending = byStatus.pending ?? []
+```
+
+### counting
+
+`counting` is like `group` but returns the count of items per key instead of the items themselves.
+
+```typescript
+import { counting } from 'radash'
+
+const votes = ['yes', 'no', 'yes', 'yes', 'no']
+const tally = counting(votes, v => v)
+// { yes: 3, no: 2 }
+```
+
+## Building lookup maps
+
+### objectify
+
+`objectify` converts an array into a dictionary. The second argument maps items to keys; the optional third argument maps items to values.
+
+```typescript
+import { objectify } from 'radash'
+
+const products = [
+  { id: 'p1', name: 'Widget', price: 9.99 },
+  { id: 'p2', name: 'Gadget', price: 19.99 },
+]
+
+// Key by id, keep the full object
+const byId = objectify(products, p => p.id)
+// { p1: { id: 'p1', name: 'Widget', price: 9.99 }, ... }
+
+// Key by id, extract only the name
+const nameById = objectify(products, p => p.id, p => p.name)
+// { p1: 'Widget', p2: 'Gadget' }
+```
+
+<Tip>
+`objectify` is the fastest way to build a lookup map before a hot loop. One pass over the array and all subsequent lookups are O(1).
+</Tip>
+
+## Filtering and transforming
+
+### select
+
+`select` is a combined filter + map in a single pass. It takes the array, a mapper, and a condition — only items that pass the condition are mapped.
+
+```typescript
+import { select } from 'radash'
+
+const items = [
+  { name: 'apple', qty: 0 },
+  { name: 'banana', qty: 3 },
+  { name: 'cherry', qty: 0 },
+  { name: 'date', qty: 12 },
+]
+
+const inStockNames = select(
+  items,
+  item => item.name,           // mapper
+  item => item.qty > 0         // condition
+)
+// ['banana', 'date']
+```
+
+### sift
+
+`sift` removes all falsy values (`null`, `undefined`, `false`, `''`, `0`, `0n`) from an array and narrows the return type accordingly.
+
+```typescript
+import { sift } from 'radash'
+
+const maybeUsers: (User | null)[] = await Promise.all(
+  ids.map(id => fetchUser(id).catch(() => null))
+)
+
+const users: User[] = sift(maybeUsers)
+```
+
+### fork
+
+`fork` splits an array into two arrays based on a predicate. Think of it as a destructuring-friendly `partition`.
+
+```typescript
+import { fork } from 'radash'
+
+const [admins, regular] = fork(users, u => u.role === 'admin')
+```
+
+<Tip>
+`fork` is more efficient than calling `.filter()` twice — it iterates the list once.
+</Tip>
+
+### diff
+
+`diff` returns items from the first array that are not present in the second. You can supply an `identity` function for complex types.
+
+```typescript
+import { diff } from 'radash'
+
+const allIds = [1, 2, 3, 4, 5]
+const processedIds = [2, 4]
+
+const remaining = diff(allIds, processedIds)
+// [1, 3, 5]
+
+// With an identity function for objects
+const remaining2 = diff(allRoles, assignedRoles, r => r.id)
+```
+
+## Aggregating values
+
+### boil
+
+`boil` reduces an array to a single value using a comparison function. It's the building block behind `max` and `min`.
+
+```typescript
+import { boil } from 'radash'
+
+const scores = [4, 7, 2, 9, 1]
+
+const highest = boil(scores, (a, b) => (a > b ? a : b))
+// 9
+
+// boil returns null for empty arrays
+const empty = boil([], (a, b) => a > b ? a : b)
+// null
+```
+
+### max and min
+
+```typescript
+import { max, min } from 'radash'
+
+const peak = max([1, 5, 3])        // 5
+const trough = min([1, 5, 3])      // 1
+
+// With objects
+const mostExpensive = max(products, p => p.price)
+// { id: 'p2', name: 'Gadget', price: 19.99 }
+```
+
+### sum
+
+```typescript
+import { sum } from 'radash'
+
+sum([1, 2, 3])                          // 6
+sum(products, p => p.price)             // 29.98
+```
+
+## Unique values
+
+`unique` deduplicates an array. Supply a `toKey` function to deduplicate objects by identity.
+
+```typescript
+import { unique } from 'radash'
+
+unique([1, 2, 2, 3, 3, 3])
+// [1, 2, 3]
+
+unique(users, u => u.email)
+// one user per email address
+```
+
+## Chunking
+
+`cluster` splits an array into chunks of a given size.
+
+```typescript
+import { cluster } from 'radash'
+
+const pages = cluster([1, 2, 3, 4, 5, 6, 7], 3)
+// [[1, 2, 3], [4, 5, 6], [7]]
+```
+
+## Toggle membership
+
+`toggle` adds an item to an array if it's not already there, or removes it if it is. Ideal for managing selection state.
+
+```typescript
+import { toggle } from 'radash'
+
+let selected: number[] = [1, 2, 3]
+
+selected = toggle(selected, 2)   // [1, 3]        — removed
+selected = toggle(selected, 4)   // [1, 3, 4]     — added
+
+// For objects, provide an identity function
+selected = toggle(selectedUsers, user, u => u.id)
+```
+
+You can control where new items are inserted:
+
+```typescript
+toggle(selected, 4, null, { strategy: 'prepend' })
+// [4, 1, 3]
+```
+
+## Iteration without arrays
+
+### range
+
+`range` is a generator that yields values from `start` to `end` (inclusive). Use it with `for...of` when you don't need an actual array.
+
+```typescript
+import { range } from 'radash'
+
+for (const i of range(0, 4)) {
+  console.log(i)  // 0, 1, 2, 3, 4
+}
+
+// With a step
+for (const i of range(0, 10, i => i, 2)) {
+  console.log(i)  // 0, 2, 4, 6, 8, 10
+}
+
+// Yield mapped values
+for (const label of range(1, 3, i => `item-${i}`)) {
+  console.log(label)  // 'item-1', 'item-2', 'item-3'
+}
+```
+
+### list
+
+`list` is `range` materialized into an array.
+
+```typescript
+import { list } from 'radash'
+
+list(4)                        // [0, 1, 2, 3, 4]
+list(1, 3)                     // [1, 2, 3]
+list(0, 3, i => `row-${i}`)   // ['row-0', 'row-1', 'row-2', 'row-3']
+list(0, 6, i => i, 2)         // [0, 2, 4, 6]
+```
+
+### iterate
+
+`iterate` is like a functional `for` loop — call a function `n` times, threading an accumulator through each call. Indexing starts at `1`.
+
+```typescript
+import { iterate } from 'radash'
+
+const doubled = iterate(4, (acc, i) => acc + i * 2, 0)
+// acc starts at 0, then 0+2, 0+2+4, 0+2+4+6, 0+2+4+6+8 → 20
+
+// Build an array of N items
+const rows = iterate(5, (acc, i) => [...acc, { row: i }], [] as { row: number }[])
+```
+
+<Warning>
+`iterate` counts from 1, not 0. If your logic is zero-indexed, subtract 1 inside the callback or use `range`/`list` instead.
+</Warning>
+
+## Combining patterns
+
+<AccordionGroup>
+  <Accordion title="Build a lookup map, then resolve references">
+    ```typescript
+    import { objectify, select } from 'radash'
+
+    const usersById = objectify(users, u => u.id)
+
+    // Resolve author names from a list of posts
+    const postsWithAuthors = select(
+      posts,
+      post => ({ ...post, author: usersById[post.authorId] }),
+      post => !!usersById[post.authorId]
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Partition and then aggregate each partition">
+    ```typescript
+    import { fork, sum } from 'radash'
+
+    const [completed, pending] = fork(orders, o => o.status === 'completed')
+
+    const completedRevenue = sum(completed, o => o.total)
+    const pendingRevenue = sum(pending, o => o.total)
+    ```
+  </Accordion>
+
+  <Accordion title="Generate a paginated batch of items">
+    ```typescript
+    import { list, cluster } from 'radash'
+
+    const items = list(0, 99, i => ({ id: i, label: `Item ${i}` }))
+    const pages = cluster(items, 10)
+    // 10 pages of 10 items each
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,276 @@
+---
+title: "Type guard predicates in Radash"
+description: "Radash's typed module provides runtime predicates — isArray, isObject, isString, isNumber, isEmpty, isEqual, and more — for narrowing TypeScript types safely."
+keywords: ["typed", "isArray", "isObject", "isString", "isNumber", "isInt", "isFloat", "isDate", "isFunction", "isPromise", "isSymbol", "isEmpty", "isEqual", "isPrimitive", "type guards"]
+---
+
+TypeScript's type system is powerful at compile time, but at runtime you often receive data with unknown shape — from API responses, user input, parsed JSON, or dynamic configuration. Radash's typed module provides a set of predicates that serve as TypeScript type guards: when they return `true`, TypeScript narrows the type in the enclosing scope.
+
+## Structural type checks
+
+### isArray
+
+```typescript
+import { isArray } from 'radash'
+
+// isArray is Array.isArray — same behavior, consistent import style
+isArray([1, 2, 3])         // true
+isArray('hello')           // false
+isArray(null)              // false
+```
+
+When used as a type guard:
+
+```typescript
+function process(value: string | string[]) {
+  if (isArray(value)) {
+    // value is string[] here
+    return value.join(', ')
+  }
+  return value
+}
+```
+
+### isObject
+
+`isObject` returns `true` only for plain objects (`constructor === Object`). Arrays, class instances, and `null` return `false`.
+
+```typescript
+import { isObject } from 'radash'
+
+isObject({ a: 1 })           // true
+isObject([1, 2])             // false — arrays are not plain objects
+isObject(new Date())         // false — class instances excluded
+isObject(null)               // false
+isObject(undefined)          // false
+```
+
+<Note>
+This is intentionally stricter than `typeof value === 'object'`. Use `isObject` when you need a plain data object, not a class instance.
+</Note>
+
+### isPrimitive
+
+`isPrimitive` returns `true` for `number`, `string`, `boolean`, `symbol`, `bigint`, `undefined`, and `null`.
+
+```typescript
+import { isPrimitive } from 'radash'
+
+isPrimitive(42)          // true
+isPrimitive('hello')     // true
+isPrimitive(null)        // true
+isPrimitive(undefined)   // true
+isPrimitive({})          // false
+isPrimitive([])          // false
+```
+
+## String and number checks
+
+### isString
+
+```typescript
+import { isString } from 'radash'
+
+isString('hello')              // true
+isString(new String('hello'))  // true  (covers boxed strings)
+isString(42)                   // false
+```
+
+### isNumber
+
+`isNumber` uses `Number(value) === value`, which means `NaN` returns `false` — consistent with what you'd expect from a numeric check.
+
+```typescript
+import { isNumber } from 'radash'
+
+isNumber(42)         // true
+isNumber(3.14)       // true
+isNumber(NaN)        // false
+isNumber('42')       // false
+isNumber(null)       // false
+```
+
+### isInt
+
+`isInt` checks that a value is a number and has no fractional part.
+
+```typescript
+import { isInt } from 'radash'
+
+isInt(42)      // true
+isInt(42.0)    // true  (no fractional part)
+isInt(42.5)    // false
+isInt('42')    // false
+```
+
+### isFloat
+
+`isFloat` checks that a value is a number with a non-zero fractional part.
+
+```typescript
+import { isFloat } from 'radash'
+
+isFloat(42.5)    // true
+isFloat(42.0)    // false
+isFloat(42)      // false
+```
+
+<Tabs>
+  <Tab title="Distinguishing integers from floats">
+    ```typescript
+    import { isInt, isFloat, isNumber } from 'radash'
+
+    function formatNumber(n: unknown): string {
+      if (!isNumber(n)) return 'not a number'
+      if (isInt(n)) return n.toLocaleString()
+      return n.toFixed(2)
+    }
+    ```
+  </Tab>
+  <Tab title="Validating form input">
+    ```typescript
+    import { isInt } from 'radash'
+
+    function validateAge(raw: unknown): number {
+      const n = Number(raw)
+      if (!isInt(n) || n < 0 || n > 150) {
+        throw new Error('Invalid age')
+      }
+      return n
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Date, function, and promise checks
+
+### isDate
+
+`isDate` uses `Object.prototype.toString` to detect `Date` objects, including invalid dates.
+
+```typescript
+import { isDate } from 'radash'
+
+isDate(new Date())           // true
+isDate(new Date('invalid'))  // true  (it is a Date, even if NaN time)
+isDate('2024-01-01')         // false
+isDate(1704067200000)        // false
+```
+
+<Note>
+`isDate` tells you if a value is a `Date` instance — not whether the date is valid. Use `isNaN(value.getTime())` to check validity after confirming it's a `Date`.
+</Note>
+
+### isFunction
+
+```typescript
+import { isFunction } from 'radash'
+
+isFunction(() => {})           // true
+isFunction(function foo() {})  // true
+isFunction(class Foo {})       // true  (classes are functions)
+isFunction(42)                 // false
+```
+
+### isPromise
+
+`isPromise` checks for a `.then` method that is a function — a "duck typing" check for thenables. It is not a strict `instanceof Promise` check.
+
+```typescript
+import { isPromise } from 'radash'
+
+isPromise(Promise.resolve(1))       // true
+isPromise({ then: () => {} })       // true  (thenable)
+isPromise(async () => {})           // false (async function, not a promise)
+isPromise(null)                     // false
+```
+
+### isSymbol
+
+```typescript
+import { isSymbol } from 'radash'
+
+isSymbol(Symbol('id'))   // true
+isSymbol('id')           // false
+```
+
+## Equality and emptiness
+
+### isEqual
+
+`isEqual` performs a deep structural equality check. It handles `Date`, `RegExp`, and nested objects/arrays.
+
+```typescript
+import { isEqual } from 'radash'
+
+isEqual({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } })   // true
+isEqual([1, 2, 3], [1, 2, 3])                              // true
+isEqual(new Date('2024-01-01'), new Date('2024-01-01'))    // true
+isEqual({ a: 1 }, { a: 2 })                                // false
+```
+
+### isEmpty
+
+`isEmpty` checks for "nothing meaningful" across multiple types:
+
+| Type | Returns `true` when... |
+|------|------------------------|
+| `boolean` | always (both `true` and `false` are considered "empty" in this utility) |
+| `null` / `undefined` | always |
+| `number` | value is `0` |
+| `Date` | date is invalid (NaN time) |
+| `string` / `Array` | `.length === 0` |
+| `Set` / `Map` | `.size === 0` |
+| `object` | has no own keys |
+| `function` | never (functions are not empty) |
+| `symbol` | never |
+
+```typescript
+import { isEmpty } from 'radash'
+
+isEmpty([])           // true
+isEmpty({})           // true
+isEmpty('')           // true
+isEmpty(0)            // true
+isEmpty(null)         // true
+isEmpty([1])          // false
+isEmpty({ a: 1 })     // false
+isEmpty(() => {})     // false
+```
+
+<Warning>
+`isEmpty(true)` and `isEmpty(false)` both return `true`. This is by design — the intent is to check whether a value carries meaningful data, and booleans themselves do not. Use explicit `value === false` comparisons if you need boolean falsy checks.
+</Warning>
+
+## Narrowing union types
+
+These predicates integrate cleanly with TypeScript's control flow analysis:
+
+```typescript
+import { isString, isNumber, isDate, isArray } from 'radash'
+
+type Field = string | number | Date | string[]
+
+function renderField(value: Field): string {
+  if (isArray(value)) return value.join(', ')
+  if (isDate(value)) return value.toLocaleDateString()
+  if (isNumber(value)) return value.toLocaleString()
+  if (isString(value)) return value
+  return ''
+}
+```
+
+```typescript
+import { isObject, isArray, isPrimitive } from 'radash'
+
+function deepClone<T>(value: T): T {
+  if (isPrimitive(value)) return value
+  if (isArray(value)) return value.map(deepClone) as unknown as T
+  if (isObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, deepClone(v)])
+    ) as unknown as T
+  }
+  return value
+}
+```

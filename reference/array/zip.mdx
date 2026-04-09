@@ -1,0 +1,59 @@
+---
+title: "zip / zipToObject — combine parallel arrays"
+description: "Pair elements from multiple arrays into tuples with zip, or combine a keys array with values into a plain object with zipToObject."
+---
+
+`zip` combines two to five parallel arrays into a single array of tuples, where each tuple holds the elements at the same index from each source array. `zipToObject` pairs a keys array with a values array (or a value factory function, or a single scalar value) into a plain record. Both functions are useful for merging data structures that share positional alignment.
+
+```typescript
+function zip<T1, T2>(array1: T1[], array2: T2[]): [T1, T2][]
+function zip<T1, T2, T3>(array1: T1[], array2: T2[], array3: T3[]): [T1, T2, T3][]
+// ...overloads up to 5 arrays
+
+function zipToObject<K extends string | number | symbol, V>(
+  keys: K[],
+  values: V | ((key: K, idx: number) => V) | V[]
+): Record<K, V>
+```
+
+### `zip` parameters
+
+<ParamField path="array1, array2, ..." type="T[]" required>
+  Two to five arrays to interleave. The output length equals the length of the longest input array; shorter arrays contribute `undefined` at missing indices.
+</ParamField>
+
+### `zipToObject` parameters
+
+<ParamField path="keys" type="K[]" required>
+  The array of keys for the resulting record. Returns an empty object when this array is empty or nullish.
+</ParamField>
+
+<ParamField path="values" type="V | ((key: K, idx: number) => V) | V[]" required>
+  The values to pair with each key. Accepts a parallel array (positionally matched), a factory function `(key, index) => value`, or a scalar value applied to every key.
+</ParamField>
+
+`zip` returns a `[T1, T2, ...][]` tuple array. `zipToObject` returns a `Record<K, V>`.
+
+```typescript
+import { zip, zipToObject } from 'radash'
+
+// Pair two parallel arrays into tuples
+zip(['a', 'b', 'c'], [1, 2, 3])
+// => [['a', 1], ['b', 2], ['c', 3]]
+
+// Three arrays
+zip(['x', 'y'], [10, 20], [true, false])
+// => [['x', 10, true], ['y', 20, false]]
+
+// Build a record from parallel key/value arrays
+zipToObject(['a', 'b', 'c'], [1, 2, 3])
+// => { a: 1, b: 2, c: 3 }
+
+// Build a record using a value factory
+zipToObject(['a', 'b'], (key, idx) => key + idx)
+// => { a: 'a0', b: 'b1' }
+
+// Apply a single scalar value to all keys
+zipToObject(['enabled', 'visible', 'active'], true)
+// => { enabled: true, visible: true, active: true }
+```

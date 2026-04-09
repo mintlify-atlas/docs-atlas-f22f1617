@@ -1,0 +1,199 @@
+---
+title: "String manipulation with Radash"
+description: "Radash's string module covers case conversions (camel, snake, pascal, dash, title), capitalize, template interpolation, and multi-character trim."
+keywords: ["string", "camel", "snake", "pascal", "dash", "title", "capitalize", "template", "trim", "case conversion"]
+---
+
+Radash's string module provides a focused set of utilities for the most common string operations: converting between naming conventions, interpolating templates, and trimming arbitrary characters. These functions are intentionally simple — each does exactly one thing and handles edge cases like existing mixed casing, separators, and Unicode strings.
+
+## Case conversions
+
+All case conversion functions accept a string in any common format — spaces, dashes, underscores, dots, or already-cased strings — and normalize it to the target format.
+
+### camel
+
+Converts a string to `camelCase`.
+
+```typescript
+import { camel } from 'radash'
+
+camel('hello world')    // 'helloWorld'
+camel('va va-VOOM')     // 'vaVaVoom'
+camel('hello_world')    // 'helloWorld'
+camel('helloWorld')     // 'helloWorld' (already camel)
+camel('FOO_BAR')        // 'fooBar'
+```
+
+### snake
+
+Converts a string to `snake_case`.
+
+```typescript
+import { snake } from 'radash'
+
+snake('hello world')    // 'hello_world'
+snake('va va-VOOM')     // 'va_va_voom'
+snake('helloWorld')     // 'hello_world'
+snake('FOO BAR')        // 'foo_bar'
+```
+
+By default `snake` inserts an underscore between a letter and a following digit. Pass `{ splitOnNumber: false }` to disable this.
+
+```typescript
+snake('item2')                              // 'item_2'
+snake('item2', { splitOnNumber: false })    // 'item2'
+```
+
+### pascal
+
+Converts a string to `PascalCase`.
+
+```typescript
+import { pascal } from 'radash'
+
+pascal('hello world')   // 'HelloWorld'
+pascal('va va boom')    // 'VaVaBoom'
+pascal('foo_bar_baz')   // 'FooBarBaz'
+```
+
+### dash
+
+Converts a string to `dash-case` (also called kebab-case).
+
+```typescript
+import { dash } from 'radash'
+
+dash('hello world')    // 'hello-world'
+dash('va va_VOOM')     // 'va-va-voom'
+dash('helloWorld')     // 'hello-world'
+```
+
+### title
+
+Converts a string to `Title Case`, capitalizing the first letter of every word.
+
+```typescript
+import { title } from 'radash'
+
+title('hello world')     // 'Hello World'
+title('va_va_boom')      // 'Va Va Boom'
+title('root-hook')       // 'Root Hook'
+title('queryItems')      // 'Query Items'
+title(null)              // ''
+title(undefined)         // ''
+```
+
+<Note>
+`title` splits on spaces, underscores, dashes, dots, and capital letter boundaries. It is safe to call with `null` or `undefined`.
+</Note>
+
+## Capitalizing a single word
+
+`capitalize` uppercases only the first character of the string and lowercases everything else.
+
+```typescript
+import { capitalize } from 'radash'
+
+capitalize('hello')          // 'Hello'
+capitalize('HELLO WORLD')    // 'Hello world'
+capitalize('va va voom')     // 'Va va voom'
+capitalize('')               // ''
+```
+
+<Tabs>
+  <Tab title="capitalize vs title">
+    ```typescript
+    capitalize('hello world')   // 'Hello world' — only the first character
+    title('hello world')        // 'Hello World' — every word
+    ```
+  </Tab>
+  <Tab title="Use case">
+    `capitalize` is best for user-visible labels where you want sentence case. `title` is better for headings where you want each word capitalized.
+  </Tab>
+</Tabs>
+
+## Template interpolation
+
+`template` replaces placeholders in a string with values from a data object. The default delimiter is `{{name}}`.
+
+```typescript
+import { template } from 'radash'
+
+const msg = template('Hello, {{name}}! You have {{count}} messages.', {
+  name: 'Alice',
+  count: 5
+})
+// 'Hello, Alice! You have 5 messages.'
+```
+
+**Custom delimiter:** Pass a regular expression as the third argument to use a different placeholder format.
+
+```typescript
+template('Hello, <name>!', { name: 'Alice' }, /<(.+?)>/g)
+// 'Hello, Alice!'
+
+template('SELECT * FROM {table} WHERE id = {id}', { table: 'users', id: 42 }, /\{(.+?)\}/g)
+// 'SELECT * FROM users WHERE id = 42'
+```
+
+<Warning>
+`template` does not escape HTML or SQL. Do not pass untrusted user input as template data where injection is a concern — use a purpose-built library for those cases.
+</Warning>
+
+## Trimming arbitrary characters
+
+The built-in `String.prototype.trim()` only removes whitespace. Radash's `trim` removes any characters you specify, including multi-character sets.
+
+```typescript
+import { trim } from 'radash'
+
+trim('  hello ')              // 'hello'     (default: whitespace)
+trim('__hello__', '_')        // 'hello'
+trim('/repos/:owner/', '/')   // 'repos/:owner'
+trim('222__hello__111', '12_')  // 'hello'   (removes 1, 2, and _ chars)
+```
+
+<Note>
+`trim` accepts a **set of characters to remove**, not a substring. `trim('aabaa', 'a')` removes all leading and trailing `'a'` characters. It is safe to call with `null` or `undefined` — both return `''`.
+</Note>
+
+## Choosing the right case function
+
+<AccordionGroup>
+  <Accordion title="Normalizing API field names">
+    ```typescript
+    import { camel, snake } from 'radash'
+
+    // Convert snake_case API response to camelCase for frontend
+    const normalized = Object.fromEntries(
+      Object.entries(apiResponse).map(([k, v]) => [camel(k), v])
+    )
+
+    // Convert camelCase form values to snake_case for API
+    const payload = Object.fromEntries(
+      Object.entries(formValues).map(([k, v]) => [snake(k), v])
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Generating CSS class names from labels">
+    ```typescript
+    import { dash } from 'radash'
+
+    const label = 'Primary Button'
+    const className = `btn-${dash(label)}`   // 'btn-primary-button'
+    ```
+  </Accordion>
+
+  <Accordion title="Building URL slugs">
+    ```typescript
+    import { dash, trim } from 'radash'
+
+    function toSlug(title: string): string {
+      return trim(dash(title).replace(/[^a-z0-9-]/g, ''), '-')
+    }
+
+    toSlug('  Hello, World!  ')   // 'hello-world'
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,40 @@
+---
+title: "shift — rotate array items left or right by N"
+description: "Rotate an array by N positions: positive N shifts items to the right, negative N shifts to the left, wrapping around with modulo arithmetic."
+---
+
+`shift` rotates an array by `n` steps without mutating the original. Positive values of `n` move items toward the end, wrapping the tail around to the front; negative values move items toward the front, wrapping the head around to the end. When `n` is larger than the array length, modulo arithmetic is applied so only the effective remainder is used.
+
+```typescript
+function shift<T>(arr: Array<T>, n: number): T[]
+```
+
+<ParamField path="arr" type="Array<T>" required>
+  The source array to rotate. Returns the same array unchanged if it is empty or if `n` is a multiple of `arr.length`.
+</ParamField>
+
+<ParamField path="n" type="number" required>
+  Number of positions to rotate. A positive value rotates right (toward higher indices); a negative value rotates left (toward lower indices).
+</ParamField>
+
+Returns a new `T[]` with the items rotated by `n` positions. The original array is not modified.
+
+```typescript
+import { shift } from 'radash'
+
+// Rotate right by 2: last 2 items move to the front
+shift([1, 2, 3, 4, 5], 2)
+// => [4, 5, 1, 2, 3]
+
+// Rotate left by 2: first 2 items move to the end
+shift([1, 2, 3, 4, 5], -2)
+// => [3, 4, 5, 1, 2]
+
+// n larger than the array length — modulo is applied
+shift([1, 2, 3, 4, 5], 7)  // 7 % 5 = 2, same as shift(..., 2)
+// => [4, 5, 1, 2, 3]
+
+// Empty array is returned as-is
+shift([], 3)
+// => []
+```

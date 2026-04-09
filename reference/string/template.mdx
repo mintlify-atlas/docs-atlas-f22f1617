@@ -1,0 +1,52 @@
+---
+title: "template — interpolate values into a string"
+description: "Replace named placeholders in a string with values from a data object, using a default mustache-style syntax or any custom regular expression."
+---
+
+`template` scans a string for placeholder tokens, looks up each token name in a data object, and substitutes the matched text with the corresponding value. By default it recognises `{{name}}` mustache-style tokens, but you can pass any regular expression with a single capture group to use a different delimiter style.
+
+```typescript
+function template(
+  str: string,
+  data: Record<string, any>,
+  regex?: RegExp
+): string
+```
+
+<ParamField path="str" type="string" required>
+  The template string containing placeholders to replace.
+</ParamField>
+
+<ParamField path="data" type="Record<string, any>" required>
+  An object mapping placeholder names to replacement values. Values are coerced to strings at substitution time.
+</ParamField>
+
+<ParamField path="regex" type="RegExp">
+  A regular expression with one capture group that identifies placeholder tokens. Defaults to `/\{\{(.+?)\}\}/g`, which matches `{{name}}` tokens. The `g` flag is required for multiple substitutions.
+</ParamField>
+
+Returns a new `string` with every matched placeholder replaced by the corresponding value from `data`. Placeholders with no matching key are left as-is.
+
+```typescript
+import { template } from 'radash'
+
+// Default {{name}} syntax
+template('Hello, {{name}}!', { name: 'ray' })
+// => 'Hello, ray!'
+
+// Multiple placeholders
+template('{{greeting}}, {{name}}. You have {{count}} messages.', {
+  greeting: 'Good morning',
+  name: 'Alice',
+  count: 3,
+})
+// => 'Good morning, Alice. You have 3 messages.'
+
+// Custom regex — angle-bracket tokens
+template('Hello, <name>', { name: 'ray' }, /<(.+?)>/g)
+// => 'Hello, ray'
+
+// Custom regex — colon-prefixed tokens
+template('GET /users/:id/posts/:postId', { id: '42', postId: '7' }, /:(\w+)/g)
+// => 'GET /users/42/posts/7'
+```

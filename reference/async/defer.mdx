@@ -1,0 +1,58 @@
+---
+title: "defer — run cleanup functions after async work"
+description: "Execute an async function and guarantee that registered cleanup callbacks run on exit, whether the function succeeds or throws an error."
+---
+
+`defer` gives you a structured way to schedule cleanup work that must happen after an async operation finishes — regardless of whether it succeeds or fails. Inside the callback you receive a `register` function; call it once for each resource or side-effect you need to clean up. All registered functions are called in registration order when the outer function exits, making teardown logic easy to co-locate with setup logic.
+
+```typescript
+async function defer<TResponse>(
+  func: (register: (fn: (error?: any) => any, options?: { rethrow?: boolean }) => void) => Promise<TResponse>
+): Promise<TResponse>
+```
+
+<ParamField path="func" type="(register: (fn, options?) => void) => Promise<TResponse>" required>
+  An async function that receives the `register` callback. Perform your main work here and call `register` for each cleanup function you want to run on exit.
+</ParamField>
+
+<ParamField path="fn" type="(error?: any) => any" required>
+  A cleanup function to run when the outer function exits. Receives the error that caused the exit, if any, so you can make cleanup decisions based on whether the operation succeeded.
+</ParamField>
+
+<ParamField path="options.rethrow" type="boolean" default="false">
+  When `true`, an error thrown inside this cleanup function is rethrown, overriding the original error. Defaults to `false`, meaning cleanup errors are silently swallowed.
+</ParamField>
+
+Returns a `Promise<TResponse>` that resolves to the return value of `func`. If `func` throws, all cleanup functions still run before the error is rethrown.
+
+```typescript
+import { defer } from 'radash'
+
+// Ensure a database connection is closed after use
+const result = await defer(async (register) => {
+  const db = await openConnection()
+  register(async () => db.close())
+
+  const users = await db.query('SELECT * FROM users')
+  return users
+})
+
+// Track a resource and rethrow cleanup errors
+await defer(async (register) => {
+  const lock = await acquireLock('resource-key')
+  register(async () => lock.release(), { rethrow: true })
+
+  await doExpensiveWork()
+})
+
+// Multiple cleanups run in registration order
+await defer(async (register) => {
+  const fileHandle = await openFile('data.csv')
+  register(() => fileHandle.close())
+
+  const tempDir = await createTempDir()
+  register(() => removeTempDir(tempDir))
+
+  await processFile(fileHandle, tempDir)
+})
+```

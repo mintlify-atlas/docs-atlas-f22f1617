@@ -1,0 +1,52 @@
+---
+title: "all — run promises in parallel, collect errors"
+description: "Run an array or object of promises concurrently and collect all resolved values. Throws a single AggregateError if any promise rejects."
+---
+
+`all` runs every promise you pass it concurrently and returns the resolved values in the same shape — an ordered array when you pass an array, or a keyed object when you pass a record. Unlike `Promise.all`, which stops at the first rejection, `all` waits for every promise to settle and then throws a single `AggregateError` that bundles all failures together.
+
+```typescript
+async function all<T extends Promise<any>[]>(
+  promises: T
+): Promise<PromiseValues<T>>
+
+async function all<T extends Record<string, Promise<any>>>(
+  promises: T
+): Promise<{ [K in keyof T]: Awaited<T[K]> }>
+```
+
+<ParamField path="promises" type="Promise<any>[] | Record<string, Promise<any>>" required>
+  Either an array of promises or a plain object whose values are promises. The return shape mirrors the input shape.
+</ParamField>
+
+Returns a `Promise` that resolves to the collected results. When the input is an array, the resolved value is an array of the same length with each element being the awaited result of the corresponding promise. When the input is an object, the resolved value is an object with the same keys, each holding the awaited result of its promise. If any promise rejects, an `AggregateError` is thrown whose `.errors` array contains all rejection values.
+
+```typescript
+import { all } from 'radash'
+
+// Array form — results are returned in the same order
+const [user, bucket, message] = await all([
+  api.users.create({ name: 'Alice' }),
+  s3.buckets.create({ name: 'uploads' }),
+  slack.send({ text: 'User created' }),
+])
+
+// Object form — results are keyed by name
+const { user, bucket, message } = await all({
+  user: api.users.create({ name: 'Alice' }),
+  bucket: s3.buckets.create({ name: 'uploads' }),
+  message: slack.send({ text: 'User created' }),
+})
+
+// Handling failures
+try {
+  const results = await all([fetchUser(1), fetchUser(2), fetchUser(3)])
+} catch (err) {
+  if (err instanceof AggregateError) {
+    // err.errors contains every individual rejection
+    for (const e of err.errors) {
+      console.error(e)
+    }
+  }
+}
+```

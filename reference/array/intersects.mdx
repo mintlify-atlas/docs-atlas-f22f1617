@@ -1,0 +1,50 @@
+---
+title: "intersects — check if two arrays share elements"
+description: "Return true if at least one element appears in both arrays, with an optional identity function for comparing objects by a derived key."
+---
+
+`intersects` answers the question "do these two arrays have anything in common?" It builds a lookup map from the second array and then checks whether any element of the first array has a matching key. An optional `identity` function lets you compare objects by a field rather than by reference, which is the common case when working with records.
+
+```typescript
+function intersects<T, K extends string | number | symbol>(
+  listA: readonly T[],
+  listB: readonly T[],
+  identity?: (t: T) => K
+): boolean
+```
+
+<ParamField path="listA" type="readonly T[]" required>
+  The first array. Returns `false` if either list is nullish.
+</ParamField>
+
+<ParamField path="listB" type="readonly T[]" required>
+  The second array to check against.
+</ParamField>
+
+<ParamField path="identity" type="(t: T) => K">
+  Optional function that maps each element to a comparable key. Defaults to using the element itself, which works for primitives.
+</ParamField>
+
+Returns `true` if at least one element in `listA` has a matching counterpart in `listB`; otherwise `false`.
+
+```typescript
+import { intersects } from 'radash'
+
+// Primitive arrays
+intersects([1, 2, 3], [3, 4, 5]) // => true
+intersects([1, 2, 3], [4, 5, 6]) // => false
+
+// Strings
+intersects(['read', 'write'], ['write', 'delete']) // => true
+intersects(['read'], ['write', 'delete'])           // => false
+
+// Objects with identity function
+type Role = { id: number; name: string }
+const userRoles: Role[] = [{ id: 1, name: 'editor' }, { id: 2, name: 'viewer' }]
+const requiredRoles: Role[] = [{ id: 2, name: 'viewer' }, { id: 3, name: 'admin' }]
+
+intersects(userRoles, requiredRoles, r => r.id) // => true
+
+// Nullish inputs
+intersects(null as unknown as string[], ['a']) // => false
+```

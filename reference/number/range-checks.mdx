@@ -1,0 +1,50 @@
+---
+title: "inRange — check if a number is within bounds"
+description: "Test whether a number falls inside a numeric range, with an optional start defaulting to zero and an end that is always exclusive of the boundary."
+---
+
+`inRange` checks whether a number sits inside a given numeric range. When called with two arguments the range is `[0, end)` — zero is inclusive, `end` is exclusive. When called with three arguments the range is `[start, end)`. The start and end values can be provided in either ascending or descending order; `inRange` normalises them internally using `Math.min` and `Math.max`.
+
+```typescript
+// Two-argument form: checks 0 (inclusive) to end (exclusive)
+function inRange(number: number, end: number): boolean
+
+// Three-argument form: checks start (inclusive) to end (exclusive)
+function inRange(number: number, start: number, end: number): boolean
+```
+
+<ParamField path="number" type="number" required>
+  The value to test. Must be a number; passing a non-number returns `false`.
+</ParamField>
+
+<ParamField path="start" type="number" required>
+  The inclusive lower bound of the range. Omit this argument (two-argument form) to use `0` as the start.
+</ParamField>
+
+<ParamField path="end" type="number" required>
+  The exclusive upper bound of the range. The range check uses `number < end` (or the normalised max), so the end value itself is never considered inside the range.
+</ParamField>
+
+Returns `true` if `number` is within the range, `false` otherwise. Also returns `false` when any argument is not a number.
+
+```typescript
+import { inRange } from 'radash'
+
+// Two-argument form — range [0, 10)
+inRange(5, 10)    // => true   (0 <= 5 < 10)
+inRange(10, 10)   // => false  (10 is not < 10)
+inRange(0, 10)    // => true   (0 is inclusive)
+inRange(-1, 10)   // => false  (below zero)
+
+// Three-argument form — range [start, end)
+inRange(5, 1, 10)   // => true
+inRange(10, 1, 10)  // => false (end is exclusive)
+inRange(1, 1, 10)   // => true  (start is inclusive)
+
+// Start and end can be in any order — both are normalised
+inRange(5, 10, 1)   // => true  (same as inRange(5, 1, 10))
+
+// Negative ranges
+inRange(-5, -10, 0)  // => true
+inRange(0, -10, 0)   // => false (end is exclusive)
+```

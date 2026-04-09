@@ -1,0 +1,56 @@
+---
+title: "objectify — convert an array to a keyed object"
+description: "Transform an array into a record by supplying a key function and an optional value function, producing a typed lookup object from any list."
+---
+
+`objectify` folds an array into a plain object in a single pass. You provide a `getKey` function that maps each element to its key, and an optional `getValue` function that maps each element to its stored value. When `getValue` is omitted, the element itself is stored. The function is a typed alternative to hand-rolling `array.reduce` for the common "array to map" conversion.
+
+```typescript
+function objectify<T, Key extends string | number | symbol, Value = T>(
+  array: readonly T[],
+  getKey: (item: T) => Key,
+  getValue?: (item: T) => Value
+): Record<Key, Value>
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to convert. Each element is passed to both `getKey` and `getValue`.
+</ParamField>
+
+<ParamField path="getKey" type="(item: T) => Key" required>
+  A function that extracts the key for each element. When two elements produce the same key the later element's value wins.
+</ParamField>
+
+<ParamField path="getValue" type="(item: T) => Value">
+  A function that extracts the value to store. Defaults to the identity function, meaning the element itself is stored as the value.
+</ParamField>
+
+Returns a `Record<Key, Value>` object mapping every key produced by `getKey` to its corresponding value.
+
+```typescript
+import { objectify } from 'radash'
+
+// Index objects by id
+type User = { id: number; name: string; role: string }
+const users: User[] = [
+  { id: 1, name: 'Alice', role: 'admin' },
+  { id: 2, name: 'Bob', role: 'editor' },
+  { id: 3, name: 'Carol', role: 'viewer' },
+]
+
+const byId = objectify(users, u => u.id)
+// => {
+//   1: { id: 1, name: 'Alice', role: 'admin' },
+//   2: { id: 2, name: 'Bob', role: 'editor' },
+//   3: { id: 3, name: 'Carol', role: 'viewer' },
+// }
+byId[2].name // => 'Bob'
+
+// Store only a derived value
+const roleById = objectify(users, u => u.id, u => u.role)
+// => { 1: 'admin', 2: 'editor', 3: 'viewer' }
+
+// Use string keys
+const byName = objectify(users, u => u.name, u => u.role)
+// => { Alice: 'admin', Bob: 'editor', Carol: 'viewer' }
+```

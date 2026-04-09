@@ -1,0 +1,46 @@
+---
+title: "sleep — pause async execution for N milliseconds"
+description: "Return a Promise that resolves after a given number of milliseconds, pausing execution in an async function without blocking the event loop."
+---
+
+`sleep` returns a `Promise` that resolves after the specified delay, making it straightforward to pause execution inside an `async` function. It is a thin wrapper around `setTimeout` and does not block the Node.js event loop — other tasks can still run while the timer is pending.
+
+```typescript
+function sleep(milliseconds: number): Promise<void>
+```
+
+<ParamField path="milliseconds" type="number" required>
+  The number of milliseconds to wait before the returned `Promise` resolves.
+</ParamField>
+
+Returns a `Promise<void>` that resolves after `milliseconds` have elapsed.
+
+```typescript
+import { sleep } from 'radash'
+
+// Pause for one second between API calls
+for (const id of userIds) {
+  await processUser(id)
+  await sleep(1000)
+}
+
+// Add a minimum perceived loading time
+async function loadWithMinDelay<T>(fetch: () => Promise<T>): Promise<T> {
+  const [result] = await Promise.all([fetch(), sleep(500)])
+  return result
+}
+
+// Wait before retrying a failed request
+async function fetchWithDelay(url: string): Promise<Response> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fetch(url)
+    } catch (err) {
+      lastError = err
+      await sleep(attempt * 200)
+    }
+  }
+  throw lastError
+}
+```

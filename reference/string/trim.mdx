@@ -1,0 +1,43 @@
+---
+title: "trim — strip characters from string ends"
+description: "Remove any combination of specified characters from the start and end of a string, extending the built-in trim to support custom character sets."
+---
+
+`trim` behaves like the built-in `String.prototype.trim` but lets you specify exactly which characters to strip. You can pass a single character or a set of characters; any character that appears in the set will be removed from both ends of the string until a character outside the set is encountered.
+
+```typescript
+function trim(
+  str: string | null | undefined,
+  charsToTrim?: string
+): string
+```
+
+<ParamField path="str" type="string | null | undefined" required>
+  The string to trim. Returns `''` immediately for any nullish or empty input.
+</ParamField>
+
+<ParamField path="charsToTrim" type="string">
+  A string whose individual characters form the set of characters to remove from both ends. Defaults to `' '` (a single space), matching the behaviour of the native `trim()`. Each character in this string is treated independently — not as a substring.
+</ParamField>
+
+Returns a `string` with all leading and trailing characters from the trim set removed. Returns `''` when `str` is null, undefined, or empty.
+
+```typescript
+import { trim } from 'radash'
+
+// Default — trims spaces like the native trim()
+trim('  hello ')           // => 'hello'
+
+// Single custom character
+trim('__hello__', '_')     // => 'hello'
+
+// URL path — strip leading and trailing slashes
+trim('/repos/:owner/:repo/', '/')  // => 'repos/:owner/:repo'
+
+// Multiple characters in the trim set
+trim('222__hello__111', '12_')     // => 'hello'
+
+// Nullish input returns empty string
+trim(null)                // => ''
+trim(undefined)           // => ''
+```

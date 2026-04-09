@@ -1,0 +1,82 @@
+---
+title: "series — navigate ordered sequences of values"
+description: "Wrap an ordered list of values to get first, last, next, previous, min, max, and spin navigation without managing indices or boundary conditions manually."
+---
+
+`series` turns an array into a navigable sequence. It builds an internal index from your items and returns an object with methods for moving through the sequence, comparing positions, and jumping multiple steps in either direction. An optional `toKey` function lets you control how each item is identified in the index, which is required when your items are objects rather than primitives.
+
+```typescript
+function series<T>(
+  items: T[],
+  toKey?: (item: T) => string | symbol
+): {
+  first(): T
+  last(): T
+  min(a: T, b: T): T
+  max(a: T, b: T): T
+  next(current: T, defaultValue?: T): T
+  previous(current: T, defaultValue?: T): T
+  spin(current: T, num: number): T
+}
+```
+
+<ParamField path="items" type="T[]" required>
+  The ordered array of values to wrap. The order of this array defines the sequence.
+</ParamField>
+
+<ParamField path="toKey" type="(item: T) => string | symbol">
+  A function that returns a unique string or symbol key for each item. Defaults to `` item => `${item}` ``, which works for primitives. Pass a custom function when items are objects to ensure correct identity comparisons.
+</ParamField>
+
+Returns an object with the following methods:
+
+| Method | Description |
+|--------|-------------|
+| `first()` | Returns the first item in the series. |
+| `last()` | Returns the last item in the series. |
+| `min(a, b)` | Returns whichever of `a` or `b` appears earlier in the series. |
+| `max(a, b)` | Returns whichever of `a` or `b` appears later in the series. |
+| `next(current, defaultValue?)` | Returns the item after `current`. When `current` is the last item, returns `defaultValue` if provided, otherwise wraps to `first()`. |
+| `previous(current, defaultValue?)` | Returns the item before `current`. When `current` is the first item, returns `defaultValue` if provided, otherwise wraps to `last()`. |
+| `spin(current, num)` | Moves `num` steps forward (positive) or backward (negative) from `current`, wrapping around as needed. |
+
+```typescript
+import { series } from 'radash'
+
+// Simple string sequence
+const weekdays = series(['mon', 'tue', 'wed', 'thu', 'fri'])
+
+weekdays.first()            // => 'mon'
+weekdays.last()             // => 'fri'
+weekdays.next('wed')        // => 'thu'
+weekdays.previous('wed')    // => 'tue'
+weekdays.next('fri')        // => 'mon'  (wraps to first)
+weekdays.previous('mon')    // => 'fri'  (wraps to last)
+
+// min and max by position
+weekdays.min('thu', 'tue')  // => 'tue'  (earlier in series)
+weekdays.max('thu', 'tue')  // => 'thu'  (later in series)
+
+// spin — move multiple steps at once
+weekdays.spin('wed', 1)     // => 'thu'
+weekdays.spin('wed', -1)    // => 'tue'
+weekdays.spin('wed', -3)    // => 'fri'  (wraps around)
+weekdays.spin('wed', 5)     // => 'wed'  (full cycle)
+
+// Custom defaultValue instead of wrapping
+weekdays.next('fri', 'none')      // => 'none'
+weekdays.previous('mon', 'none')  // => 'none'
+
+// Object items — provide a toKey function
+type Status = { id: string; label: string }
+const statuses: Status[] = [
+  { id: 'draft', label: 'Draft' },
+  { id: 'review', label: 'In Review' },
+  { id: 'published', label: 'Published' },
+]
+
+const workflow = series(statuses, s => s.id)
+
+workflow.first()                              // => { id: 'draft', label: 'Draft' }
+workflow.next({ id: 'draft', label: 'Draft' }) // => { id: 'review', label: 'In Review' }
+```

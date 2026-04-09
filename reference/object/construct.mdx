@@ -1,0 +1,50 @@
+---
+title: "construct — rebuild object from dot-path keys"
+description: "Reconstruct a deeply nested object or array from a flat map of dot-notation key paths and their values, reversing the output of crush."
+---
+
+`construct` is the inverse of `crush`. It takes a flat object whose keys are dot-notation paths (e.g. `'children.0.name'`) and rebuilds the original nested structure by calling `set` for each path in turn. When a segment in a path is a numeric index, `construct` creates an array at that level; otherwise it creates a plain object.
+
+```typescript
+function construct<TObject extends object>(obj: TObject): object
+```
+
+<ParamField path="obj" type="TObject" required>
+  A flat object whose keys are dot-notation paths and whose values are the leaf values to place at those paths.
+</ParamField>
+
+Returns a new nested `object` reconstructed from the dot-path entries of `obj`.
+
+```typescript
+import { construct } from 'radash'
+
+// Basic reconstruction
+construct({ name: 'ra', age: 5000 })
+// => { name: 'ra', age: 5000 }
+
+// Nested object paths
+construct({
+  'name': 'ra',
+  'address.city': 'Heliopolis',
+  'address.country': 'Egypt',
+})
+// => { name: 'ra', address: { city: 'Heliopolis', country: 'Egypt' } }
+
+// Array paths (numeric segment creates an array)
+construct({
+  'name': 'ra',
+  'children.0.name': 'hathor',
+  'children.1.name': 'thoth',
+})
+// => { name: 'ra', children: [{ name: 'hathor' }, { name: 'thoth' }] }
+
+// Round-trip with crush
+import { crush } from 'radash'
+
+const original = { name: 'ra', children: [{ name: 'hathor' }] }
+const flat = crush(original)
+// => { name: 'ra', 'children.0.name': 'hathor' }
+
+construct(flat)
+// => { name: 'ra', children: [{ name: 'hathor' }] }
+```

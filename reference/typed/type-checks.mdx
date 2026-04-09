@@ -1,0 +1,113 @@
+---
+title: "Type guard predicates — runtime type checking"
+description: "Runtime type predicates for TypeScript: isArray, isObject, isString, isNumber, isEqual, isEmpty, and more — each narrows the type in conditional branches."
+---
+
+Radash's `typed` module exports a set of small, focused predicate functions. Most are TypeScript type guards that narrow the type of a value inside a conditional block. Two additional helpers — `isEmpty` and `isEqual` — cover common structural checks that go beyond simple type detection.
+
+```typescript
+function isArray(value: any): value is any[]
+function isObject(value: any): value is object
+function isPrimitive(value: any): boolean
+function isFunction(value: any): value is Function
+function isString(value: any): value is string
+function isNumber(value: any): value is number
+function isInt(value: any): value is number
+function isFloat(value: any): value is number
+function isDate(value: any): value is Date
+function isPromise(value: any): value is Promise<any>
+function isSymbol(value: any): value is symbol
+function isEmpty(value: any): boolean
+function isEqual<TType>(x: TType, y: TType): boolean
+```
+
+## Predicate reference
+
+| Predicate | Returns `true` when… |
+|-----------|----------------------|
+| `isArray` | Value is an array (delegates to `Array.isArray`) |
+| `isObject` | Value is a plain object (`constructor === Object`; excludes arrays, dates, etc.) |
+| `isPrimitive` | Value is `undefined`, `null`, a non-object, or a non-function |
+| `isFunction` | Value is callable (has `.call` and `.apply`) |
+| `isString` | Value is a primitive string or a `String` instance |
+| `isNumber` | `Number(value) === value` (includes `0`, `-0`, but not `NaN`) |
+| `isInt` | Is a number and `value % 1 === 0` |
+| `isFloat` | Is a number and `value % 1 !== 0` |
+| `isDate` | `Object.prototype.toString` reports `[object Date]` |
+| `isPromise` | Value is truthy and has a callable `.then` |
+| `isSymbol` | Value's constructor is `Symbol` |
+| `isEmpty` | `true` for `0`, `false`, `null`, `undefined`, `NaN` date, empty string, empty array, or empty plain object |
+| `isEqual` | Deep structural equality (handles `Date`, `RegExp`, nested objects) |
+
+<ParamField path="value" type="any" required>
+  The value to inspect. All predicates accept `any` so they can be used without prior type knowledge.
+</ParamField>
+
+<ParamField path="x / y" type="TType" required>
+  (`isEqual` only) The two values to compare. Both must share the same type `TType`.
+</ParamField>
+
+Type guard functions return `value is T` and narrow the TypeScript type inside `if` blocks. `isPrimitive`, `isEmpty`, and `isEqual` return a plain `boolean`.
+
+```typescript
+import {
+  isArray, isObject, isPrimitive, isFunction,
+  isString, isNumber, isInt, isFloat,
+  isDate, isPromise, isSymbol, isEmpty, isEqual,
+} from 'radash'
+
+// Basic checks
+isArray([1, 2, 3])         // => true
+isArray('hello')           // => false
+isObject({ a: 1 })         // => true
+isObject([1, 2, 3])        // => false  (arrays excluded)
+isObject(new Date())       // => false  (dates excluded)
+
+isPrimitive(42)            // => true
+isPrimitive(null)          // => true
+isPrimitive({})            // => false
+
+isFunction(() => {})       // => true
+isString('hello')          // => true
+isNumber(3.14)             // => true
+isNumber(NaN)              // => false
+isInt(4)                   // => true
+isInt(4.5)                 // => false
+isFloat(4.5)               // => true
+isFloat(4)                 // => false
+
+isDate(new Date())         // => true
+isDate('2024-01-01')       // => false
+isPromise(Promise.resolve()) // => true
+isSymbol(Symbol('id'))     // => true
+
+// isEmpty
+isEmpty(0)                 // => true
+isEmpty(false)             // => true
+isEmpty(null)              // => true
+isEmpty('')                // => true
+isEmpty([])                // => true
+isEmpty({})                // => true
+isEmpty(new Date('bad'))   // => true  (invalid date)
+isEmpty(1)                 // => false
+isEmpty([1])               // => false
+
+// isEqual — deep equality
+isEqual({ a: 1, b: 2 }, { a: 1, b: 2 })  // => true
+isEqual([1, 2, 3], [1, 2, 3])             // => true
+isEqual(new Date('2024-01-01'), new Date('2024-01-01')) // => true
+isEqual({ a: 1 }, { a: 2 })              // => false
+
+// Type narrowing example
+function processInput(value: unknown) {
+  if (isString(value)) {
+    // TypeScript knows value is string here
+    return value.toUpperCase()
+  }
+  if (isNumber(value)) {
+    // TypeScript knows value is number here
+    return value.toFixed(2)
+  }
+  return null
+}
+```

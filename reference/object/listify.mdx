@@ -1,0 +1,55 @@
+---
+title: "listify — convert an object's entries to an array"
+description: "Transform every key-value pair in an object into an array item using a mapper function. Returns items in the object's natural key iteration order."
+---
+
+`listify` is a more expressive alternative to `Object.entries(...).map(...)`. It iterates every entry in the source object and passes each key-value pair to your `toItem` function, collecting the return values into an array. This is useful when you need to turn a lookup map or index object into a display list, a sorted structure, or any other array-based representation.
+
+```typescript
+function listify<TValue, TKey extends string | number | symbol, KResult>(
+  obj: Record<TKey, TValue>,
+  toItem: (key: TKey, value: TValue) => KResult
+): KResult[]
+```
+
+<ParamField path="obj" type="Record<TKey, TValue>" required>
+  The source object whose entries will be mapped. Returns an empty array when the object is falsy or has no entries.
+</ParamField>
+
+<ParamField path="toItem" type="(key: TKey, value: TValue) => KResult" required>
+  A function called for each key-value pair. The value it returns is added to the result array.
+</ParamField>
+
+Returns a `KResult[]` containing one item per entry in `obj`, in the object's natural key iteration order.
+
+```typescript
+import { listify } from 'radash'
+
+// Build an array of formatted strings
+const roles = { admin: 'Administrator', editor: 'Editor', viewer: 'Viewer' }
+listify(roles, (key, value) => `${key}: ${value}`)
+// => ['admin: Administrator', 'editor: Editor', 'viewer: Viewer']
+
+// Map to objects
+type ScoreMap = Record<string, number>
+const scores: ScoreMap = { alice: 92, bob: 85, carol: 78 }
+
+listify(scores, (name, score) => ({ name, score }))
+// => [
+//   { name: 'alice', score: 92 },
+//   { name: 'bob', score: 85 },
+//   { name: 'carol', score: 78 },
+// ]
+
+// Use the key as an id field
+const users = { u1: 'Ra', u2: 'Hathor', u3: 'Thoth' }
+listify(users, (id, name) => ({ id, name }))
+// => [
+//   { id: 'u1', name: 'Ra' },
+//   { id: 'u2', name: 'Hathor' },
+//   { id: 'u3', name: 'Thoth' },
+// ]
+
+// Empty object
+listify({}, (k, v) => v) // => []
+```

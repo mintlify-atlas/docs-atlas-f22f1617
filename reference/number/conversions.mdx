@@ -1,0 +1,56 @@
+---
+title: "toInt / toFloat — safely parse numbers with defaults"
+description: "Parse any value to an integer or float with a configurable fallback, returning zero by default instead of NaN when parsing fails or the input is nullish."
+---
+
+`toInt` and `toFloat` are safe wrappers around `parseInt` and `parseFloat`. They return a sensible default whenever the input is `null`, `undefined`, or produces `NaN` after parsing — eliminating the need to guard against `NaN` at every call site. Pass `null` as the default to explicitly signal parse failure instead of returning zero.
+
+```typescript
+function toFloat<T extends number | null = number>(
+  value: any,
+  defaultValue?: T
+): number | T
+
+function toInt<T extends number | null = number>(
+  value: any,
+  defaultValue?: T
+): number | T
+```
+
+<ParamField path="value" type="any" required>
+  The value to parse. Strings, numbers, booleans, and other types are all accepted; `parseInt`/`parseFloat` is applied and the result is checked for `NaN`.
+</ParamField>
+
+<ParamField path="defaultValue" type="number | null">
+  The value returned when parsing produces `NaN`, or when `value` is `null` or `undefined`. Defaults to `0` for `toInt` and `0.0` for `toFloat`. Pass `null` to receive `null` back on failure (the return type becomes `number | null`).
+</ParamField>
+
+Returns the parsed `number`, or `defaultValue` when parsing fails. The generic parameter `T` narrows the return type when you pass `null` as the default.
+
+```typescript
+import { toInt, toFloat } from 'radash'
+
+// Typical parsing
+toInt('42')          // => 42
+toFloat('3.14')      // => 3.14
+
+// Fails gracefully — returns 0 by default
+toInt('abc')         // => 0
+toFloat(undefined)   // => 0
+toInt(null)          // => 0
+
+// Custom numeric default
+toInt('abc', -1)     // => -1
+toFloat('abc', 0.5)  // => 0.5
+
+// Null default — useful when you need to distinguish "failed" from "zero"
+toInt('abc', null)   // => null  (return type: number | null)
+toFloat(null, null)  // => null
+
+// Numbers pass through unchanged
+toInt(7)             // => 7
+toFloat(1.5)         // => 1.5
+
+// toInt truncates floats like parseInt
+toInt('9.99')        // => 9
+```

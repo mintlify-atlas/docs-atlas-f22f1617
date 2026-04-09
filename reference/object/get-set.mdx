@@ -1,0 +1,84 @@
+---
+title: "get / set — read and write nested object paths"
+description: "Dynamically read or write a value at any depth in an object using a dot-notation or bracket-notation path string, with safe defaults and no mutation."
+---
+
+`get` and `set` provide path-based access to deeply nested properties. `get` walks a dot-notation or bracket-notation path string (e.g. `'friends[0].name'`) and returns the value at that location, falling back to a `defaultValue` when any segment along the way is `null`, `undefined`, or missing. `set` does the inverse: it writes a value at the given path and returns a new object without mutating the original.
+
+```typescript
+function get<TDefault = unknown>(
+  value: any,
+  path: string,
+  defaultValue?: TDefault
+): TDefault
+
+function set<T extends object, K>(
+  initial: T,
+  path: string,
+  value: K
+): T
+```
+
+<ParamField path="value" type="any" required>
+  The object or array to read from. Passing `null` or `undefined` returns `defaultValue` immediately.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  A dot-notation or bracket-notation path to the target property, for example `'user.address.city'` or `'friends[0].name'`. Bracket notation and dot notation can be mixed freely.
+</ParamField>
+
+<ParamField path="defaultValue" type="TDefault">
+  Value returned by `get` when the path does not resolve to a defined value. Defaults to `undefined`.
+</ParamField>
+
+---
+
+<ParamField path="initial" type="T" required>
+  The base object for `set`. It is not mutated; a cloned copy with the new value applied is returned instead.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  A dot-notation or bracket-notation path to the property to write, for example `'cards[0].value'`. Missing intermediate objects or arrays are created automatically.
+</ParamField>
+
+<ParamField path="value" type="K" required>
+  The value to write at the resolved path.
+</ParamField>
+
+`get` returns the value at the path as `TDefault`, or `defaultValue` when the path cannot be resolved. `set` returns a new object of type `T` with the value written at the given path.
+
+```typescript
+import { get, set } from 'radash'
+
+// get — dot notation
+const user = { name: 'ra', address: { city: 'Heliopolis' } }
+get(user, 'address.city')          // => 'Heliopolis'
+get(user, 'address.country', 'EG') // => 'EG'  (default)
+get(user, 'missing.key', 0)        // => 0
+
+// get — bracket notation
+const data = { friends: [{ name: 'hathor' }, { name: 'thoth' }] }
+get(data, 'friends[0].name') // => 'hathor'
+get(data, 'friends[1].name') // => 'thoth'
+
+// get — null-safe traversal
+get(null, 'any.path', 'fallback') // => 'fallback'
+
+// set — write a top-level key
+set({}, 'name', 'ra')
+// => { name: 'ra' }
+
+// set — write a nested key (creates intermediate objects)
+set({}, 'address.city', 'Heliopolis')
+// => { address: { city: 'Heliopolis' } }
+
+// set — write into an array path (creates intermediate array)
+set({}, 'cards[0].value', 2)
+// => { cards: [{ value: 2 }] }
+
+// set — original is not mutated
+const original = { name: 'ra' }
+const updated = set(original, 'name', 'zeus')
+original.name // => 'ra'
+updated.name  // => 'zeus'
+```

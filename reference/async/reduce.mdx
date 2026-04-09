@@ -1,0 +1,68 @@
+---
+title: "reduce — async reduce over an array"
+description: "Accumulate an array into a single value using an async reducer, awaiting each step in sequence. Throws if the array is empty and no initial value is provided."
+---
+
+`reduce` mirrors the built-in `Array.prototype.reduce` but accepts an async reducer and awaits each accumulation step before continuing. This is useful when each reduction step requires an async operation — for example, fetching related data, writing to a database, or calling an external API — and the next step depends on the result of the previous one.
+
+```typescript
+async function reduce<T, K>(
+  array: readonly T[],
+  asyncReducer: (acc: K, item: T, index: number) => Promise<K>,
+  initValue?: K
+): Promise<K>
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to reduce. Throws an error if the array is empty and no `initValue` is provided.
+</ParamField>
+
+<ParamField path="asyncReducer" type="(acc: K, item: T, index: number) => Promise<K>" required>
+  An async function called for each element. Receives the current accumulator, the current item, and the current index. Must return a `Promise` that resolves to the next accumulator value.
+</ParamField>
+
+<ParamField path="initValue" type="K">
+  The initial accumulator value. When omitted, the first element of the array is used as the initial value and reduction begins from the second element. Required if the array may be empty.
+</ParamField>
+
+Returns a `Promise<K>` that resolves to the final accumulated value. Throws if `array` is empty and `initValue` is not provided.
+
+```typescript
+import { reduce } from 'radash'
+
+// Sum the prices of all line items, fetching each asynchronously
+const orderIds = [101, 102, 103]
+
+const total = await reduce(
+  orderIds,
+  async (acc, id) => {
+    const order = await fetchOrder(id)
+    return acc + order.total
+  },
+  0
+)
+// total => combined price of all three orders
+
+// Build an object keyed by user id
+const userIds = [1, 2, 3]
+
+const usersById = await reduce(
+  userIds,
+  async (acc, id) => {
+    const user = await fetchUser(id)
+    return { ...acc, [id]: user }
+  },
+  {} as Record<number, User>
+)
+
+// Chain dependent async steps
+const steps = ['validate', 'transform', 'persist']
+
+const result = await reduce(
+  steps,
+  async (ctx, step) => {
+    return runPipelineStep(step, ctx)
+  },
+  initialContext
+)
+```

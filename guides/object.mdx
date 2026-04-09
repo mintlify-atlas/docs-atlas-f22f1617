@@ -1,0 +1,314 @@
+---
+title: "Object utilities in Radash"
+description: "Radash's object module provides deep get/set, pick/omit, shake, crush/construct, map functions, and more for immutable object manipulation in TypeScript."
+keywords: ["object", "pick", "omit", "get", "set", "shake", "crush", "construct", "assign", "clone", "mapKeys", "mapValues", "mapEntries", "invert", "listify", "keys"]
+---
+
+Working with objects in JavaScript often requires either mutating them in place or reaching for a heavy library. Radash's object module takes a middle path: every function returns a new object (or value), leaving the input untouched, while keeping the implementation minimal and the types precise.
+
+## Selecting properties
+
+### pick
+
+`pick` returns a new object with only the specified keys. TypeScript infers the return type as `Pick<T, K>`.
+
+```typescript
+import { pick } from 'radash'
+
+const user = { id: 1, name: 'Alice', email: 'alice@example.com', passwordHash: '...' }
+
+const publicUser = pick(user, ['id', 'name', 'email'])
+// { id: 1, name: 'Alice', email: 'alice@example.com' }
+```
+
+### omit
+
+`omit` is the inverse — it returns a new object with the specified keys removed.
+
+```typescript
+import { omit } from 'radash'
+
+const safeUser = omit(user, ['passwordHash'])
+// { id: 1, name: 'Alice', email: 'alice@example.com' }
+```
+
+<Tip>
+Use `pick` when you know which keys you want to keep; use `omit` when you know which keys you want to remove. For large objects with few sensitive fields, `omit` is more concise.
+</Tip>
+
+## Deep access with dot notation
+
+### get
+
+`get` reads a nested value using a dot-notation path string. It handles `null` and `undefined` at any level without throwing, returning the `defaultValue` instead.
+
+```typescript
+import { get } from 'radash'
+
+const config = {
+  db: {
+    host: 'localhost',
+    port: 5432,
+    credentials: { user: 'admin', password: 'secret' }
+  },
+  features: ['auth', 'logging']
+}
+
+get(config, 'db.host')                   // 'localhost'
+get(config, 'db.credentials.user')       // 'admin'
+get(config, 'features[0]')               // 'auth'
+get(config, 'db.timeout', 30)            // 30 (default — key not found)
+get(null, 'any.path', 'fallback')        // 'fallback'
+```
+
+### set
+
+`set` writes a nested value using a dot-notation path. It returns a new object and does not mutate the input.
+
+```typescript
+import { set } from 'radash'
+
+const updated = set(config, 'db.port', 5433)
+// config.db.port is still 5432
+// updated.db.port is 5433
+
+// Supports array index notation
+const withFirstFeature = set({}, 'features[0].name', 'auth')
+// { features: [{ name: 'auth' }] }
+```
+
+## Cleaning up objects
+
+### shake
+
+`shake` removes entries that match a filter from an object. By default it removes `undefined` values, but you can supply any predicate.
+
+```typescript
+import { shake } from 'radash'
+
+// Remove undefined (default)
+const cleaned = shake({ a: 1, b: undefined, c: null, d: 0 })
+// { a: 1, c: null, d: 0 }
+
+// Remove all falsy values
+const dense = shake({ a: 1, b: null, c: false, d: '' }, v => !v)
+// { a: 1 }
+```
+
+## Flattening and rebuilding
+
+### crush
+
+`crush` flattens a nested object to a single-level object with dot-notation keys.
+
+```typescript
+import { crush } from 'radash'
+
+const nested = {
+  name: 'ra',
+  address: { city: 'Cairo', zip: '12345' },
+  tags: ['admin', 'user']
+}
+
+crush(nested)
+// {
+//   'name': 'ra',
+//   'address.city': 'Cairo',
+//   'address.zip': '12345',
+//   'tags.0': 'admin',
+//   'tags.1': 'user'
+// }
+```
+
+### construct
+
+`construct` is the inverse of `crush` — it takes a flat object with dot-notation keys and builds the nested structure.
+
+```typescript
+import { construct } from 'radash'
+
+construct({
+  'name': 'ra',
+  'address.city': 'Cairo',
+  'address.zip': '12345',
+})
+// { name: 'ra', address: { city: 'Cairo', zip: '12345' } }
+```
+
+<Note>
+`crush` and `construct` are inverses. `construct(crush(obj))` will reproduce the original structure.
+</Note>
+
+## Mapping over objects
+
+### mapKeys
+
+`mapKeys` produces a new object with the same values but transformed keys.
+
+```typescript
+import { mapKeys } from 'radash'
+
+const original = { firstName: 'Alice', lastName: 'Smith' }
+
+// Convert camelCase keys to snake_case
+const snaked = mapKeys(original, key =>
+  key.replace(/([A-Z])/g, '_$1').toLowerCase()
+)
+// { first_name: 'Alice', last_name: 'Smith' }
+```
+
+### mapValues
+
+`mapValues` produces a new object with the same keys but transformed values.
+
+```typescript
+import { mapValues } from 'radash'
+
+const prices = { apple: 1.5, banana: 0.75, cherry: 3.0 }
+
+const withTax = mapValues(prices, price => price * 1.1)
+// { apple: 1.65, banana: 0.825, cherry: 3.3 }
+```
+
+### mapEntries
+
+`mapEntries` transforms both keys and values simultaneously.
+
+```typescript
+import { mapEntries } from 'radash'
+
+const env = { NODE_ENV: 'production', PORT: '3000' }
+
+const typed = mapEntries(env, (key, value) => [
+  key.toLowerCase(),
+  key === 'PORT' ? parseInt(value) : value
+])
+// { node_env: 'production', port: 3000 }
+```
+
+## Other utilities
+
+### invert
+
+`invert` swaps keys and values.
+
+```typescript
+import { invert } from 'radash'
+
+const statusCodes = { ok: 200, notFound: 404, error: 500 }
+const byCode = invert(statusCodes)
+// { '200': 'ok', '404': 'notFound', '500': 'error' }
+```
+
+### listify
+
+`listify` converts an object to an array. You control the shape of each item.
+
+```typescript
+import { listify } from 'radash'
+
+const scores = { alice: 95, bob: 87, carol: 92 }
+
+const leaderboard = listify(scores, (name, score) => ({ name, score }))
+// [{ name: 'alice', score: 95 }, { name: 'bob', score: 87 }, ...]
+```
+
+### keys
+
+`keys` returns all leaf key paths in a nested object using dot notation.
+
+```typescript
+import { keys } from 'radash'
+
+keys({ name: 'ra', address: { city: 'Cairo' } })
+// ['name', 'address.city']
+
+keys({ tags: ['a', 'b'] })
+// ['tags.0', 'tags.1']
+```
+
+### assign
+
+`assign` is a deep merge that applies values from the `override` object onto the `initial` object recursively for nested object properties.
+
+```typescript
+import { assign } from 'radash'
+
+const defaults = {
+  timeout: 5000,
+  db: { host: 'localhost', port: 5432 }
+}
+
+const overrides = {
+  db: { port: 5433 }
+}
+
+assign(defaults, overrides)
+// { timeout: 5000, db: { host: 'localhost', port: 5433 } }
+```
+
+<Warning>
+`assign` only deep-merges plain objects (`constructor === Object`). Arrays and class instances in override positions replace the corresponding value entirely rather than being merged.
+</Warning>
+
+### clone
+
+`clone` produces a shallow copy. For primitives and functions it returns the value unchanged; for objects it copies own property names.
+
+```typescript
+import { clone } from 'radash'
+
+const original = { a: 1, nested: { b: 2 } }
+const copy = clone(original)
+
+copy.a = 99
+original.a  // still 1 — top-level properties are independent
+
+copy.nested.b = 99
+original.nested.b  // 99 — nested objects are shared (shallow copy)
+```
+
+## Combining patterns
+
+<AccordionGroup>
+  <Accordion title="Safe config merging with defaults">
+    ```typescript
+    import { assign, shake } from 'radash'
+
+    const defaults: Config = { timeout: 5000, retries: 3, debug: false }
+
+    function createClient(options: Partial<Config>): Config {
+      // Remove undefined options so they don't override defaults
+      return assign(defaults, shake(options))
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Serialize and deserialize a form state">
+    ```typescript
+    import { crush, construct } from 'radash'
+
+    // Flatten to send as form data
+    const flat = crush(formState)
+    // { 'address.street': '123 Main', 'address.zip': '10001', ... }
+
+    // Rebuild from query string params
+    const params = Object.fromEntries(new URLSearchParams(queryString))
+    const restored = construct(params)
+    ```
+  </Accordion>
+
+  <Accordion title="Build a safe public response shape">
+    ```typescript
+    import { pick, mapKeys } from 'radash'
+    import { camel } from 'radash'
+
+    // Pick only safe fields, then normalize key format
+    const publicUser = mapKeys(
+      pick(dbUser, ['id', 'display_name', 'created_at']),
+      key => camel(key)
+    )
+    // { id: ..., displayName: ..., createdAt: ... }
+    ```
+  </Accordion>
+</AccordionGroup>

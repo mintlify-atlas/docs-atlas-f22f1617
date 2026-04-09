@@ -1,0 +1,55 @@
+---
+title: "random / draw / shuffle — randomize values"
+description: "Generate a random integer in a range, pick a random element from an array, or produce a new shuffled copy of an array using three focused utility functions."
+---
+
+Radash's random utilities cover the three most common randomisation needs: generating a bounded integer, selecting a random item from a list, and reordering a list. All functions are pure — they never mutate the input array — and rely on `Math.random` internally.
+
+```typescript
+function random(min: number, max: number): number
+function draw<T>(array: readonly T[]): T | null
+function shuffle<T>(array: readonly T[]): T[]
+```
+
+<ParamField path="min" type="number" required>
+  (`random`) The inclusive lower bound of the integer range.
+</ParamField>
+
+<ParamField path="max" type="number" required>
+  (`random`) The inclusive upper bound of the integer range.
+</ParamField>
+
+<ParamField path="array" type="readonly T[]" required>
+  (`draw`, `shuffle`) The source array. `draw` returns `null` for an empty array; `shuffle` returns a new empty array.
+</ParamField>
+
+- `random` returns a `number` — a random integer between `min` and `max`, both inclusive.
+- `draw` returns a random element of type `T`, or `null` if the array is empty.
+- `shuffle` returns a new `T[]` with the same elements in a random order. The original array is not modified.
+
+```typescript
+import { random, draw, shuffle } from 'radash'
+
+// random — inclusive on both ends
+random(1, 6)   // => 1 | 2 | 3 | 4 | 5 | 6  (like a die roll)
+random(0, 100) // => some integer between 0 and 100
+
+// draw — picks one item at random
+const colours = ['red', 'green', 'blue', 'yellow']
+draw(colours)  // => 'green' (or any other item)
+draw([])       // => null
+
+// draw with typed objects
+type Card = { suit: string; value: number }
+const deck: Card[] = [
+  { suit: 'hearts', value: 1 },
+  { suit: 'spades', value: 13 },
+]
+const card = draw(deck)  // => Card | null
+
+// shuffle — returns a new shuffled array, original is unchanged
+const nums = [1, 2, 3, 4, 5]
+const shuffled = shuffle(nums)  // => e.g. [3, 1, 5, 2, 4]
+console.log(nums)               // => [1, 2, 3, 4, 5]  (unchanged)
+shuffle([])                     // => []
+```

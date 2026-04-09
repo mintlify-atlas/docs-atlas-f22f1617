@@ -1,0 +1,87 @@
+---
+title: "mapKeys / mapValues / mapEntries — transform objects"
+description: "Produce a new object by remapping keys, remapping values, or remapping both at once, with lowerize and upperize as convenience wrappers for key casing."
+---
+
+Radash provides a family of functions for transforming the shape of an object without leaving the object world. `mapKeys` lets you rename every key while preserving values. `mapValues` lets you transform every value while preserving keys. `mapEntries` combines both: your callback returns a new `[key, value]` tuple for each entry. `lowerize` and `upperize` are thin wrappers over `mapKeys` that lowercase or uppercase every key in one call.
+
+```typescript
+function mapKeys<TValue, TKey extends string | number | symbol, TNewKey extends string | number | symbol>(
+  obj: Record<TKey, TValue>,
+  mapFunc: (key: TKey, value: TValue) => TNewKey
+): Record<TNewKey, TValue>
+
+function mapValues<TValue, TKey extends string | number | symbol, TNewValue>(
+  obj: Record<TKey, TValue>,
+  mapFunc: (value: TValue, key: TKey) => TNewValue
+): Record<TKey, TNewValue>
+
+function mapEntries<TKey extends string | number | symbol, TValue, TNewKey extends string | number | symbol, TNewValue>(
+  obj: Record<TKey, TValue>,
+  toEntry: (key: TKey, value: TValue) => [TNewKey, TNewValue]
+): Record<TNewKey, TNewValue>
+
+function lowerize<T extends Record<string, any>>(obj: T): LowercasedKeys<T>
+
+function upperize<T extends Record<string, any>>(obj: T): UppercasedKeys<T>
+```
+
+<ParamField path="obj" type="Record<TKey, TValue>" required>
+  The source object to transform. All three functions return an empty object when `obj` is falsy.
+</ParamField>
+
+<ParamField path="mapFunc" type="(key: TKey, value: TValue) => TNewKey">
+  **`mapKeys` only.** Called with each key and its associated value; must return the new key for that entry.
+</ParamField>
+
+<ParamField path="mapFunc" type="(value: TValue, key: TKey) => TNewValue">
+  **`mapValues` only.** Called with each value and its associated key; must return the new value for that entry. Note that the argument order is `(value, key)`, opposite to `mapKeys`.
+</ParamField>
+
+<ParamField path="toEntry" type="(key: TKey, value: TValue) => [TNewKey, TNewValue]">
+  **`mapEntries` only.** Called with each key-value pair; must return a `[newKey, newValue]` tuple that will be written into the result object.
+</ParamField>
+
+Each function returns a new object. `mapKeys` preserves values, `mapValues` preserves keys, and `mapEntries` can change both. `lowerize` and `upperize` return a new object with all keys lowercased or uppercased respectively.
+
+```typescript
+import { mapKeys, mapValues, mapEntries, lowerize, upperize } from 'radash'
+
+// mapKeys — rename every key
+const scores = { alice: 100, bob: 90 }
+mapKeys(scores, (key) => key.toUpperCase())
+// => { ALICE: 100, BOB: 90 }
+
+// mapKeys — use value to compute key
+const users = { u1: { name: 'Ra' }, u2: { name: 'Hathor' } }
+mapKeys(users, (_key, value) => value.name)
+// => { Ra: { name: 'Ra' }, Hathor: { name: 'Hathor' } }
+
+// mapValues — transform every value
+const prices = { apple: 1.5, banana: 0.75, cherry: 3.0 }
+mapValues(prices, (price) => `$${price.toFixed(2)}`)
+// => { apple: '$1.50', banana: '$0.75', cherry: '$3.00' }
+
+// mapValues — use key in transformation
+mapValues(prices, (price, item) => ({ item, price }))
+// => {
+//   apple:  { item: 'apple',  price: 1.5  },
+//   banana: { item: 'banana', price: 0.75 },
+//   cherry: { item: 'cherry', price: 3.0  },
+// }
+
+// mapEntries — remap both key and value
+const inventory = { apples: 5, bananas: 3 }
+mapEntries(inventory, (key, count) => [key.toUpperCase(), count * 2])
+// => { APPLES: 10, BANANAS: 6 }
+
+// lowerize — lowercase all keys
+const headers = { 'Content-Type': 'application/json', 'X-Api-Key': 'abc' }
+lowerize(headers)
+// => { 'content-type': 'application/json', 'x-api-key': 'abc' }
+
+// upperize — uppercase all keys
+const env = { host: 'localhost', port: '3000' }
+upperize(env)
+// => { HOST: 'localhost', PORT: '3000' }
+```

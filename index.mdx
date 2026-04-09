@@ -1,97 +1,82 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Radash: Modern TypeScript Utility Library"
+description: "Radash is a zero-dependency, fully-typed functional utility library for JavaScript and TypeScript. Tree-shakeable, simple, and powerful."
 ---
 
-## Setting up
+Radash is a modern utility library built for TypeScript-first projects. It covers arrays, async operations, currying, objects, strings, numbers, and type checking — all with full TypeScript generics and zero runtime dependencies. Think of it as a leaner, more expressive replacement for Lodash.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install Radash via npm, yarn, or pnpm. Works with Node.js 14.18+ and all modern bundlers.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Getting Started" icon="rocket" href="/getting-started">
+    See Radash in action with a hands-on quickstart covering the most useful utilities.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="API Reference" icon="code" href="/reference/array/boil">
+    Browse the full API — every function documented with signatures, parameters, and examples.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Guides by Module" icon="book-open" href="/guides/array">
+    Explore each module in depth: array, async, curry, object, string, typed, and more.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Why Radash?
 
-Everything you need to create world-class documentation.
+Radash was built to solve real problems that Lodash doesn't handle well in modern codebases:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Tree-shakeable" icon="leaf">
+    Import only what you use. Every function is a named export — no bloated bundle.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="TypeScript-first" icon="shield-check">
+    Generic signatures throughout. No `any` surprises — your editor will know the types.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Zero dependencies" icon="cube">
+    No transitive vulnerabilities. Radash ships only its own code.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Async-native" icon="bolt">
+    Async map, parallel execution, retry with backoff, defer — async is a first-class citizen.
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Quick look
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+```typescript
+import * as _ from 'radash'
+
+const gods = [
+  { name: 'Ra',   power: 'sun',       rank: 100, culture: 'egypt' },
+  { name: 'Loki', power: 'tricks',    rank: 72,  culture: 'norse' },
+  { name: 'Zeus', power: 'lightning', rank: 96,  culture: 'greek' }
+]
+
+_.max(gods, g => g.rank)                         // => { name: 'Ra', ... }
+_.sum(gods, g => g.rank)                         // => 268
+_.fork(gods, g => g.culture === 'norse')         // => [[loki], [ra, zeus]]
+_.sort(gods, g => g.rank)                        // => [ra, zeus, loki]
+_.objectify(gods, g => g.name.toLowerCase())     // => { ra, zeus, loki }
+
+// Error-safe async
+const [err, god] = await _.tryit(api.gods.findByName)('Ra')
+
+// Parallel async with concurrency limit
+const allGods = await _.parallel(3, gods, async g => api.gods.fetch(g.name))
+```
+
+## Get started
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install radash
+    ```
+  </Step>
+  <Step title="Import the functions you need">
+    ```typescript
+    import { group, sort, tryit, parallel } from 'radash'
+    ```
+  </Step>
+  <Step title="Use them in your project">
+    Every function is pure, typed, and ready to use. No setup, no configuration.
+  </Step>
+</Steps>

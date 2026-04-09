@@ -1,0 +1,44 @@
+---
+title: "clone — shallow copy any value"
+description: "Create a shallow copy of any value, returning primitives as-is, binding a new copy of functions, and producing a new instance for objects and arrays."
+---
+
+`clone` creates a shallow copy of the value you pass in. The behaviour adapts to the type: primitives (strings, numbers, booleans, `null`, `undefined`) are returned directly because they are already immutable. Functions are bound to an empty object, producing an independent copy of the function reference. For all other values — plain objects, arrays, class instances — `clone` calls the value's own constructor and copies every own property across to the new instance.
+
+```typescript
+function clone<T>(obj: T): T
+```
+
+<ParamField path="obj" type="T" required>
+  The value to clone. Accepts any JavaScript value: primitives, functions, arrays, plain objects, or class instances.
+</ParamField>
+
+Returns a shallow copy of type `T`. Nested references inside objects and arrays point to the same child values as the original.
+
+```typescript
+import { clone } from 'radash'
+
+// Primitive — returned as-is
+clone(42)       // => 42
+clone('hello')  // => 'hello'
+clone(null)     // => null
+
+// Object — new instance, same top-level props
+const user = { id: 1, name: 'ra' }
+const copy = clone(user)
+copy.name = 'hathor'
+user.name // => 'ra'  (original unchanged)
+copy.name // => 'hathor'
+
+// Array — new array, same element references
+const list = [{ id: 1 }, { id: 2 }]
+const listCopy = clone(list)
+listCopy.push({ id: 3 })
+list.length     // => 2  (original unchanged)
+listCopy.length // => 3
+
+// Function — bound copy
+const greet = (name: string) => `Hello, ${name}`
+const greetCopy = clone(greet)
+greetCopy('world') // => 'Hello, world'
+```

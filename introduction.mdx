@@ -1,0 +1,44 @@
+---
+title: "Radash: Functional Utilities for TypeScript"
+description: "Radash is a zero-dependency TypeScript utility library with tree-shakeable named exports covering arrays, async, objects, strings, numbers, and type guards."
+---
+
+Radash is a functional utility library that provides typed helpers for arrays, async operations, currying, objects, strings, numbers, and type guards. It is published to npm as `radash` and works with Node.js 14.18+ and all modern bundlers.
+
+## What's included
+
+Radash exports ~80 functions across 9 modules:
+
+| Module | What it does |
+|--------|-------------|
+| **array** | Sorting, grouping, filtering, zipping, and transforming arrays |
+| **async** | Async map, parallel execution, retry, defer, error-safe try |
+| **curry** | Compose, chain, partial, memoize, debounce, throttle |
+| **object** | Deep get/set, pick, omit, shake, crush/construct, map entries |
+| **string** | Case conversion (camel, snake, pascal, dash), template, trim |
+| **number** | Range checks, safe int/float parsing |
+| **random** | Random numbers, drawing, shuffling, UID generation |
+| **typed** | Type guard predicates: isArray, isObject, isString, etc. |
+| **series** | Ordered series navigation (next, previous, spin) |
+
+## Design principles
+
+- **Tree-shakeable** — Every function is a named export. Import only what you need.
+- **TypeScript-first** — Generic signatures on every function. No `any` escape hatches.
+- **Zero dependencies** — No transitive vulnerabilities. Pure TypeScript source.
+- **Functional** — Pure functions. No mutations. Predictable behavior.
+- **Async-native** — Async helpers are first-class, not bolted on.
+
+## Installation
+
+```bash npm
+npm install radash
+```
+```bash yarn
+yarn add radash
+```
+```bash pnpm
+pnpm add radash
+```
+
+See [Installation](/installation) for full setup details, or jump straight to [Getting Started](/getting-started) for examples.

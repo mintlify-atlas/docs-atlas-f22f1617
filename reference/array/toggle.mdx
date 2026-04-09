@@ -1,0 +1,68 @@
+---
+title: "toggle — add or remove an item by its presence"
+description: "Remove an item from an array if it already exists, or add it if it does not — with optional key extraction and prepend/append placement control."
+---
+
+`toggle` implements the common pattern of toggling list membership: if the item is already present it is removed, otherwise it is added. By default, equality is checked by reference (`===`), but you can supply a `toKey` function to compare by a derived key — which is essential for objects. An optional `strategy` controls whether new items are added at the front (`'prepend'`) or the back (`'append'`, the default).
+
+```typescript
+function toggle<T>(
+  list: readonly T[],
+  item: T,
+  toKey?: null | ((item: T, idx: number) => number | string | symbol),
+  options?: { strategy?: 'prepend' | 'append' }
+): T[]
+```
+
+<ParamField path="list" type="readonly T[]" required>
+  The source array. Returns `[item]` when the list is nullish, and a copy of the list when `item` is nullish.
+</ParamField>
+
+<ParamField path="item" type="T" required>
+  The value to add or remove.
+</ParamField>
+
+<ParamField path="toKey" type="null | ((item: T, idx: number) => number | string | symbol)">
+  An optional function that maps each element to a comparable key. When omitted or `null`, strict reference equality (`===`) is used. Required when comparing objects by identity field.
+</ParamField>
+
+<ParamField path="options" type="{ strategy?: 'prepend' | 'append' }">
+  Controls where a new item is inserted when it is not already present. Defaults to `'append'`.
+</ParamField>
+
+Returns a new `T[]` with the item either removed (if it was present) or added (if it was absent).
+
+```typescript
+import { toggle } from 'radash'
+
+// Primitive toggle — item absent, so it is appended
+toggle([1, 2, 3], 4)
+// => [1, 2, 3, 4]
+
+// Primitive toggle — item present, so it is removed
+toggle([1, 2, 3, 4], 4)
+// => [1, 2, 3]
+
+// Object toggle using toKey for comparison
+type Tag = { id: number; label: string }
+const tags: Tag[] = [
+  { id: 1, label: 'typescript' },
+  { id: 2, label: 'radash' },
+]
+
+// Add a tag that is not present
+toggle(tags, { id: 3, label: 'functional' }, t => t.id)
+// => [
+//   { id: 1, label: 'typescript' },
+//   { id: 2, label: 'radash' },
+//   { id: 3, label: 'functional' },
+// ]
+
+// Remove a tag that is present
+toggle(tags, { id: 1, label: 'typescript' }, t => t.id)
+// => [{ id: 2, label: 'radash' }]
+
+// Prepend strategy — new item added at the front
+toggle([1, 2, 3], 0, null, { strategy: 'prepend' })
+// => [0, 1, 2, 3]
+```

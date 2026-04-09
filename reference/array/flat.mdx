@@ -1,0 +1,48 @@
+---
+title: "flat — flatten a 2D array into one dimension"
+description: "Concatenate an array of arrays into a single flat array, preserving the order of all elements across every inner list. Collapses exactly one level of nesting."
+---
+
+`flat` takes a two-dimensional array — an array whose items are themselves arrays — and returns a new single-dimensional array containing every element in order. It is a focused utility for the common case of collapsing exactly one level of nesting.
+
+```typescript
+function flat<T>(lists: readonly T[][]): T[]
+```
+
+<ParamField path="lists" type="readonly T[][]" required>
+  An array of arrays to flatten. All inner arrays are concatenated in order into the returned array.
+</ParamField>
+
+Returns a `T[]` containing every element from every inner array, in the order they appeared.
+
+```typescript
+import { flat } from 'radash'
+
+// Numbers
+const nested = [[1, 2], [3, 4], [5, 6]]
+flat(nested)
+// => [1, 2, 3, 4, 5, 6]
+
+// Strings
+const chunks = [['a', 'b'], ['c'], ['d', 'e', 'f']]
+flat(chunks)
+// => ['a', 'b', 'c', 'd', 'e', 'f']
+
+// Empty inner arrays are ignored
+flat([[1, 2], [], [3]])
+// => [1, 2, 3]
+
+// Objects
+type Tag = { id: number; label: string }
+const tagGroups: Tag[][] = [
+  [{ id: 1, label: 'typescript' }, { id: 2, label: 'node' }],
+  [{ id: 3, label: 'react' }],
+]
+
+flat(tagGroups)
+// => [
+//   { id: 1, label: 'typescript' },
+//   { id: 2, label: 'node' },
+//   { id: 3, label: 'react' },
+// ]
+```

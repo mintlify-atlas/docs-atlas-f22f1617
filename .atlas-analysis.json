@@ -1,28 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Radash",
+  "projectType": "sdk-library",
+  "projectName": "Radash",
+  "projectDescription": "A modern, typed, functional utility library for JavaScript and TypeScript that replaces Lodash with a simpler, tree-shakeable API.",
   "theme": "luma",
-  "colors": {
-    "primary": "#040404",
-    "light": "#f55348",
-    "dark": "#4f042b"
-  },
-  "favicon": "https://media.brand.dev/8e6bd6f3-2642-4ac0-a08e-c27bcca04b23.png",
-  "logo": {
-    "light": "https://media.brand.dev/4cf0831e-3472-4dd3-93f1-7443d27cadbc.png",
-    "dark": "https://media.brand.dev/4cf0831e-3472-4dd3-93f1-7443d27cadbc.png"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/sodiray/radash"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/sodiray/radash"
-    }
-  },
+  "primaryColor": "#040404",
+  "lightColor": "#f55348",
+  "darkColor": "#4f042b",
   "navigation": {
     "tabs": [
       {
@@ -54,7 +37,6 @@
             "group": "Array",
             "pages": [
               "reference/array/boil",
-              "reference/array/sum-max-min",
               "reference/array/cluster",
               "reference/array/counting",
               "reference/array/diff",
@@ -137,5 +119,29 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Tree-shakeable — only import what you use",
+    "Fully typed with TypeScript generics",
+    "Zero runtime dependencies",
+    "Covers array, async, curry/functional, object, string, number, random, and typed utilities",
+    "Modern async helpers: parallel execution, retry with backoff, defer, and error-safe tryit",
+    "Functional patterns: compose, chain, partial application, memoization, debounce, throttle"
+  ],
+  "publicApiSurface": [
+    "alphabetical", "boil", "cluster", "counting", "diff", "first", "flat", "fork", "group",
+    "intersects", "iterate", "last", "list", "max", "merge", "min", "objectify", "range",
+    "replace", "replaceOrAppend", "select", "shift", "sift", "sort", "sum", "toggle", "unique",
+    "zip", "zipToObject",
+    "all", "defer", "guard", "map", "parallel", "reduce", "retry", "sleep", "tryit",
+    "callable", "chain", "compose", "debounce", "memo", "partial", "partob", "proxied", "throttle",
+    "inRange", "toFloat", "toInt",
+    "assign", "clone", "construct", "crush", "get", "invert", "keys", "listify", "lowerize",
+    "mapEntries", "mapKeys", "mapValues", "omit", "pick", "set", "shake", "upperize",
+    "draw", "random", "shuffle", "uid",
+    "series",
+    "camel", "capitalize", "dash", "pascal", "snake", "template", "title", "trim",
+    "isArray", "isDate", "isEmpty", "isEqual", "isFloat", "isFunction", "isInt", "isNumber",
+    "isObject", "isPrimitive", "isPromise", "isString", "isSymbol"
+  ]
 }

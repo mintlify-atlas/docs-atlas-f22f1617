@@ -1,0 +1,56 @@
+---
+title: "group — group array items by a key function"
+description: "Partition an array into a record of named buckets using a key function, where each key maps to the array of items that produced that key."
+---
+
+`group` iterates an array and organises every element into a bucket determined by `getGroupId`. The result is a `Partial<Record<Key, T[]>>` — a plain object where each key is one of the values your function returned and the corresponding value is an array of all items that mapped to that key. The return type is `Partial` because not every possible `Key` value is guaranteed to be present.
+
+```typescript
+function group<T, Key extends string | number | symbol>(
+  array: readonly T[],
+  getGroupId: (item: T) => Key
+): Partial<Record<Key, T[]>>
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to group. Each element is passed to `getGroupId` to determine its bucket.
+</ParamField>
+
+<ParamField path="getGroupId" type="(item: T) => Key" required>
+  A function that maps an element to its group key. Items sharing the same key are collected into the same array.
+</ParamField>
+
+Returns a `Partial<Record<Key, T[]>>` where each present key maps to a non-empty array of the items assigned to that group.
+
+```typescript
+import { group } from 'radash'
+
+// Group strings by first character
+const words = ['apple', 'avocado', 'banana', 'blueberry', 'cherry']
+const byLetter = group(words, w => w[0])
+// => {
+//   a: ['apple', 'avocado'],
+//   b: ['banana', 'blueberry'],
+//   c: ['cherry'],
+// }
+
+// Group objects by a field value
+type Product = { name: string; category: string; price: number }
+const products: Product[] = [
+  { name: 'Hammer', category: 'tools', price: 15 },
+  { name: 'Wrench', category: 'tools', price: 12 },
+  { name: 'Paint', category: 'supplies', price: 8 },
+  { name: 'Brush', category: 'supplies', price: 5 },
+]
+
+const byCategory = group(products, p => p.category)
+// => {
+//   tools:    [{ name: 'Hammer', ... }, { name: 'Wrench', ... }],
+//   supplies: [{ name: 'Paint', ... }, { name: 'Brush', ... }],
+// }
+
+// Numeric keys
+const nums = [1, 2, 3, 4, 5, 6]
+const byParity = group(nums, n => n % 2 === 0 ? 'even' : 'odd')
+// => { odd: [1, 3, 5], even: [2, 4, 6] }
+```

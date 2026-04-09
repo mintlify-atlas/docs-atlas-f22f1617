@@ -1,0 +1,44 @@
+---
+title: "chain — pipe functions left to right"
+description: "Compose up to 10 functions into a single pipeline where each function's return value is passed as the argument to the next function in sequence."
+---
+
+`chain` connects a series of functions so that calling the resulting function runs each one in order, left to right, passing the output of each as the input to the next. Unlike `compose`, there is no middleware wrapping — each function simply receives the previous function's return value. Up to 10 functions are supported via typed overloads.
+
+```typescript
+function chain<T1 extends any[], T2, T3>(
+  f1: (...arg: T1) => T2,
+  f2: (arg: T2) => T3
+): (...arg: T1) => T3
+```
+
+<ParamField path="f1" type="(...arg: T1) => T2" required>
+  The first function in the pipeline. Accepts any arguments — these become the arguments of the returned function.
+</ParamField>
+
+<ParamField path="f2...f10" type="(arg: TN) => TN+1" required>
+  Each subsequent function receives the return value of the previous one as its single argument.
+</ParamField>
+
+Returns a new function with the same parameter signature as `f1` and the return type of the last function in the chain.
+
+```typescript
+import { chain } from 'radash'
+
+const add1 = (x: number) => x + 1
+const double = (x: number) => x * 2
+
+// 5 + 1 = 6, 6 * 2 = 12
+const add1ThenDouble = chain(add1, double)
+add1ThenDouble(5)  // => 12
+
+// Chaining three functions
+const format = (n: number) => `result: ${n}`
+const pipeline = chain(add1, double, format)
+pipeline(5)  // => 'result: 12'
+
+// Works with multi-argument first functions
+const sum = (a: number, b: number) => a + b
+const sumThenDouble = chain(sum, double)
+sumThenDouble(3, 4)  // => 14
+```

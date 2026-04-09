@@ -1,0 +1,287 @@
+---
+title: "Async utilities in Radash"
+description: "Radash's async module replaces try/catch boilerplate with composable utilities for error-safe calls, parallel execution, retries, and cleanup."
+keywords: ["async", "tryit", "parallel", "retry", "defer", "guard", "sleep", "all", "map", "reduce"]
+---
+
+Async code in TypeScript tends to accumulate try/catch blocks that interrupt control flow and scatter error-handling logic. Radash's async module offers an alternative: functions that return `[error, result]` tuples, run tasks with controlled concurrency, retry with backoff, and guarantee cleanup regardless of success or failure.
+
+## The [error, result] tuple pattern
+
+### tryit
+
+`tryit` wraps any function — sync or async — and returns a version that never throws. Instead, it returns an `[error, result]` tuple. When the call succeeds, the first element is `undefined`; when it fails, the second element is `undefined`.
+
+```typescript
+import { tryit } from 'radash'
+
+const [err, user] = await tryit(fetchUser)(userId)
+
+if (err) {
+  console.error('Failed to load user:', err.message)
+  return
+}
+
+// user is typed as User here — TypeScript knows it's defined
+console.log(user.name)
+```
+
+Compare this to the try/catch equivalent:
+
+<CodeGroup>
+```typescript with tryit
+const [err, user] = await tryit(fetchUser)(userId)
+if (err) return handleError(err)
+doSomethingWith(user)
+```
+
+```typescript with try/catch
+let user: User
+try {
+  user = await fetchUser(userId)
+} catch (err) {
+  return handleError(err)
+}
+doSomethingWith(user)
+```
+</CodeGroup>
+
+<Tip>
+`tryit` works with synchronous functions too — the return type automatically adjusts based on whether the wrapped function returns a `Promise`.
+</Tip>
+
+### guard
+
+`guard` is a simpler variant: it returns `undefined` on failure instead of a tuple. Use it when you want a fallback value rather than explicit error handling.
+
+```typescript
+import { guard } from 'radash'
+
+const config = await guard(loadConfig) ?? defaultConfig
+
+// With a filter — only swallow specific errors
+const data = await guard(
+  () => fetchData(url),
+  err => err instanceof NetworkError
+)
+```
+
+<Warning>
+`guard` without a filter swallows all errors. Use the optional second argument to re-throw errors you didn't expect.
+</Warning>
+
+## Running tasks in parallel
+
+### parallel
+
+`parallel` processes an array of items concurrently with a concurrency limit. Unlike `Promise.all`, it won't fire all requests at once — it maintains a queue with at most `limit` tasks running simultaneously.
+
+```typescript
+import { parallel } from 'radash'
+
+const userIds = [1, 2, 3, 4, 5, 6, 7, 8]
+
+// Process at most 3 at a time
+const users = await parallel(3, userIds, async id => {
+  return fetchUser(id)
+})
+```
+
+If any tasks throw, `parallel` collects all errors and re-throws them in an `AggregateError` after all tasks complete.
+
+```typescript
+import { parallel, AggregateError } from 'radash'
+
+try {
+  const results = await parallel(5, urls, fetchData)
+} catch (err) {
+  if (err instanceof AggregateError) {
+    console.log(`${err.errors.length} requests failed`)
+  }
+}
+```
+
+<Note>
+`parallel` preserves the order of results — the output array maps 1:1 to the input array regardless of task completion order.
+</Note>
+
+### all
+
+`all` is similar to `Promise.all` but collects all errors into an `AggregateError` rather than short-circuiting on the first rejection.
+
+```typescript
+import { all } from 'radash'
+
+// Array form — results ordered by input
+const [user, posts, comments] = await all([
+  fetchUser(userId),
+  fetchPosts(userId),
+  fetchComments(userId),
+])
+
+// Object form — results keyed by property name
+const { user, posts } = await all({
+  user: fetchUser(userId),
+  posts: fetchPosts(userId),
+})
+```
+
+### map
+
+`map` is an async version of `Array.prototype.map`. It executes the mapper **sequentially**, not in parallel. Use `parallel` when you need concurrency control.
+
+```typescript
+import { map } from 'radash'
+
+const enriched = await map(users, async user => {
+  const profile = await fetchProfile(user.id)
+  return { ...user, ...profile }
+})
+```
+
+### reduce
+
+`reduce` is an async version of `Array.prototype.reduce`.
+
+```typescript
+import { reduce } from 'radash'
+
+const total = await reduce(
+  orders,
+  async (acc, order) => {
+    const tax = await calculateTax(order)
+    return acc + order.subtotal + tax
+  },
+  0
+)
+```
+
+## Retrying failures
+
+### retry
+
+`retry` calls a function repeatedly until it succeeds or the attempt limit is reached. You can configure a fixed `delay` or an exponential `backoff`.
+
+```typescript
+import { retry } from 'radash'
+
+// Retry up to 3 times (default) with no delay
+const user = await retry({}, () => fetchUser(id))
+
+// Up to 5 times, 200 ms between attempts
+const data = await retry(
+  { times: 5, delay: 200 },
+  () => fetchData(url)
+)
+
+// Exponential backoff: 100ms, 200ms, 400ms...
+const result = await retry(
+  { times: 4, backoff: attempt => 100 * 2 ** attempt },
+  () => callExternalApi()
+)
+```
+
+The callback receives an `exit` function you can call to stop retrying immediately — useful for non-retryable errors like 401 Unauthorized.
+
+```typescript
+const user = await retry({ times: 3 }, async exit => {
+  const [err, result] = await tryit(fetchUser)(id)
+  if (err?.status === 401) exit(err)   // stop retrying
+  if (err) throw err                   // allow retry
+  return result
+})
+```
+
+## Guaranteed cleanup
+
+### defer
+
+`defer` lets you register cleanup callbacks that run after your async function completes, whether it succeeds or throws. Think of it as `try/finally` with a registration API.
+
+```typescript
+import { defer } from 'radash'
+
+const result = await defer(async register => {
+  const connection = await db.connect()
+  register(() => connection.close())          // always runs
+
+  const tempFile = await createTempFile()
+  register(() => fs.unlink(tempFile.path))    // always runs
+
+  return processData(connection, tempFile)
+})
+```
+
+By default, errors thrown inside a cleanup callback are swallowed. Pass `{ rethrow: true }` to re-throw them.
+
+```typescript
+register(
+  async () => { await criticalCleanup() },
+  { rethrow: true }
+)
+```
+
+## Sleeping
+
+`sleep` pauses execution for a given number of milliseconds.
+
+```typescript
+import { sleep } from 'radash'
+
+await sleep(1000)  // wait 1 second
+
+// Useful inside retry loops or rate-limited scripts
+for (const batch of batches) {
+  await processBatch(batch)
+  await sleep(500)
+}
+```
+
+## Combining patterns
+
+<AccordionGroup>
+  <Accordion title="Safe parallel fetch with fallback">
+    ```typescript
+    import { parallel, tryit } from 'radash'
+
+    const results = await parallel(5, userIds, async id => {
+      const [err, user] = await tryit(fetchUser)(id)
+      return err ? null : user
+    })
+
+    const users = results.filter(Boolean)
+    ```
+  </Accordion>
+
+  <Accordion title="Retry with exponential backoff and bail-out">
+    ```typescript
+    import { retry, tryit } from 'radash'
+
+    const data = await retry(
+      {
+        times: 5,
+        backoff: n => Math.min(100 * 2 ** n, 10_000),
+      },
+      async exit => {
+        const [err, result] = await tryit(callApi)()
+        if (err?.status === 404) exit(err)  // don't retry 404
+        if (err) throw err
+        return result
+      }
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Concurrent tasks with guaranteed cleanup">
+    ```typescript
+    import { defer, parallel } from 'radash'
+
+    const output = await defer(async register => {
+      const session = await startSession()
+      register(() => session.end())
+
+      return parallel(10, items, item => session.process(item))
+    })
+    ```
+  </Accordion>
+</AccordionGroup>

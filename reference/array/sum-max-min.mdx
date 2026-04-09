@@ -1,0 +1,72 @@
+---
+title: "sum / max / min — aggregate array values"
+description: "Aggregate an array to its sum, max item, or min item. Accepts plain number arrays or an object array with a numeric getter. max and min return the full item."
+---
+
+`sum`, `max`, and `min` are focused aggregation functions that reduce an array to a single numeric result or a single item. All three accept either a plain number array or an object array with a getter function that extracts the comparison value, and all return `null` (or `0` for `sum`) when the array is empty.
+
+```typescript
+// sum — overloads
+function sum<T extends number>(array: readonly T[]): number
+function sum<T extends object>(array: readonly T[], fn: (item: T) => number): number
+
+// max — overloads
+function max(array: readonly [number, ...number[]]): number
+function max(array: readonly number[]): number | null
+function max<T>(array: readonly T[], getter: (item: T) => number): T | null
+
+// min — overloads
+function min(array: readonly [number, ...number[]]): number
+function min(array: readonly number[]): number | null
+function min<T>(array: readonly T[], getter: (item: T) => number): T | null
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The array to aggregate. `sum` returns `0` for an empty array; `max` and `min` return `null`.
+</ParamField>
+
+<ParamField path="fn / getter" type="(item: T) => number">
+  A function that extracts the numeric value from each element. Required when `T` is not a number. For `max` and `min`, the **whole item** (not just the numeric value) is returned.
+</ParamField>
+
+`sum` returns a `number`. `max` and `min` return the matching item of type `T` (or `null` for an empty array), not the extracted number — so you get back the full object when using a getter.
+
+```typescript
+import { sum, max, min } from 'radash'
+
+// Plain number arrays
+sum([1, 2, 3, 4, 5])       // => 15
+max([1, 2, 3])             // => 3
+min([1, 2, 3])             // => 1
+
+// Empty array edge cases
+sum([])                    // => 0
+max([])                    // => null
+min([])                    // => null
+
+// Object arrays with a getter
+type God = { name: string; rank: number }
+const gods: God[] = [
+  { name: 'Ra',   rank: 100 },
+  { name: 'Loki', rank: 72  },
+  { name: 'Zeus', rank: 96  },
+]
+
+sum(gods, g => g.rank)     // => 268
+
+max(gods, g => g.rank)
+// => { name: 'Ra', rank: 100 }   — returns the full object
+
+min(gods, g => g.rank)
+// => { name: 'Loki', rank: 72 }  — returns the full object
+
+// Combined: total + top item
+const total = sum(gods, g => g.rank)
+const topGod = max(gods, g => g.rank)
+console.log(`${topGod?.name} leads with ${topGod?.rank} out of ${total}`)
+// => "Ra leads with 100 out of 268"
+```
+
+<Note>
+`max` and `min` are implemented using `boil` under the hood. They return the **item** that produced the highest or lowest getter value, not the value itself. Use `max(gods, g => g.rank)?.rank` to extract just the number.
+</Note>

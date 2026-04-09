@@ -1,0 +1,58 @@
+---
+title: "tryit — wrap a function to return [error, result]"
+description: "Convert any function into one that returns an error-first tuple instead of throwing, keeping control flow linear for both sync and async functions."
+---
+
+`tryit` takes a function and returns a new wrapped version that never throws. On success the wrapper returns `[undefined, result]`; on failure it returns `[error, undefined]`. This error-first tuple pattern lets you handle errors inline without `try/catch` blocks, and it works identically for both synchronous and asynchronous functions. The function is also exported as `try` for environments where that reserved word is valid.
+
+```typescript
+function tryit<Args extends any[], Return>(
+  func: (...args: Args) => Return
+): (...args: Args) => Return extends Promise<any>
+  ? Promise<[Error, undefined] | [undefined, Awaited<Return>]>
+  : [Error, undefined] | [undefined, Return]
+```
+
+<ParamField path="func" type="(...args: Args) => Return" required>
+  The function to wrap. Can be synchronous or asynchronous. The wrapper preserves the original function's parameter types.
+</ParamField>
+
+Returns a new function with the same parameters as `func`. When called:
+
+- **Success**: resolves/returns `[undefined, result]`
+- **Error**: resolves/returns `[error, undefined]`
+
+For async functions the wrapper returns a `Promise` that always resolves (never rejects). For sync functions it returns the tuple directly. Destructure the result to get either value.
+
+<Note>
+  `tryit` is also exported as `try` from radash. Because `try` is a reserved word in JavaScript, use `tryit` in most contexts or alias it on import: `import { try as tryit } from 'radash'`.
+</Note>
+
+```typescript
+import { tryit } from 'radash'
+
+// Async usage — fetch a user and handle the error inline
+const [err, user] = await tryit(fetchUser)(userId)
+if (err) {
+  console.error('Failed to fetch user:', err)
+  return null
+}
+console.log('Fetched user:', user.name)
+
+// Sync usage — parse JSON without try/catch
+const [parseErr, config] = tryit(JSON.parse)(rawConfigString)
+if (parseErr) {
+  console.error('Invalid JSON in config file')
+  process.exit(1)
+}
+
+// Wrap once, call many times
+const safeGetUser = tryit(fetchUser)
+
+const [err1, alice] = await safeGetUser(1)
+const [err2, bob]   = await safeGetUser(2)
+
+// Discard the error when only the result matters
+const [, cached] = await tryit(readFromCache)(cacheKey)
+const value = cached ?? await fetchFromOrigin(cacheKey)
+```

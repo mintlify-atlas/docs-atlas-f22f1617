@@ -1,0 +1,46 @@
+---
+title: "crush — flatten object to dot-notation paths"
+description: "Flatten a deeply nested object into a single-level map whose keys are dot-notation paths to every leaf value, including values inside nested arrays."
+---
+
+`crush` walks every property of a nested object — including values inside arrays — and produces a new flat object whose keys are the full dot-notation paths to each leaf value. Array indices become numeric path segments (e.g. `children.0.name`). The result can be reconstructed back into the original shape with `construct`.
+
+```typescript
+function crush<TValue extends object>(value: TValue): object
+```
+
+<ParamField path="value" type="TValue" required>
+  The deeply nested object to flatten. Arrays and nested objects at any depth are all resolved to leaf paths.
+</ParamField>
+
+Returns a new flat `object` where every key is a dot-notation path and every value is a leaf value from the original.
+
+```typescript
+import { crush } from 'radash'
+
+// Flat object — unchanged shape
+crush({ name: 'ra', age: 5000 })
+// => { name: 'ra', age: 5000 }
+
+// Nested object
+crush({
+  name: 'ra',
+  address: { city: 'Heliopolis', country: 'Egypt' },
+})
+// => { name: 'ra', 'address.city': 'Heliopolis', 'address.country': 'Egypt' }
+
+// Nested array
+crush({
+  name: 'ra',
+  children: [{ name: 'hathor' }, { name: 'thoth' }],
+})
+// => {
+//   name: 'ra',
+//   'children.0.name': 'hathor',
+//   'children.1.name': 'thoth',
+// }
+
+// Multiple levels deep
+crush({ a: { b: { c: 42 } } })
+// => { 'a.b.c': 42 }
+```

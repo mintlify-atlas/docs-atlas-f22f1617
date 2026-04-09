@@ -1,0 +1,64 @@
+---
+title: "parallel — async map with concurrency limit"
+description: "Transform an array concurrently using a bounded worker pool. Controls how many async operations run at once and collects all errors in an AggregateError."
+---
+
+`parallel` maps over an array with a fixed pool of concurrent workers. You specify the maximum number of items to process at the same time; `parallel` never exceeds that limit. All items eventually run, and if any fail, their errors are collected and thrown together as an `AggregateError` once the entire array has been processed.
+
+```typescript
+async function parallel<T, K>(
+  limit: number,
+  array: readonly T[],
+  func: (item: T) => Promise<K>
+): Promise<K[]>
+```
+
+<ParamField path="limit" type="number" required>
+  The maximum number of operations to run concurrently. A value of `1` makes execution serial (equivalent to `map`); higher values allow more items to be in-flight simultaneously.
+</ParamField>
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to process. Each element is passed to `func` exactly once.
+</ParamField>
+
+<ParamField path="func" type="(item: T) => Promise<K>" required>
+  An async function called for each element. Up to `limit` calls may be active at the same time.
+</ParamField>
+
+Returns a `Promise<K[]>` that resolves to the transformed values in the same order as the input array. If one or more calls to `func` reject, an `AggregateError` is thrown after all items have settled. The `AggregateError.errors` array contains every individual rejection value.
+
+<Note>
+  Unlike `map`, which runs operations serially, `parallel` runs up to `limit` operations at the same time. Choose a limit that respects the rate limits and resource constraints of the services you are calling.
+</Note>
+
+```typescript
+import { parallel, AggregateError } from 'radash'
+
+// Resize 100 images with at most 5 running at once
+const imagePaths = await fetchImagePaths()
+
+const resized = await parallel(5, imagePaths, async (path) => {
+  return resizeImage(path, { width: 800 })
+})
+
+// Fetch user details concurrently, handle partial failures
+const userIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+try {
+  const users = await parallel(3, userIds, async (id) => {
+    return fetchUser(id)
+  })
+  console.log('All users fetched:', users)
+} catch (err) {
+  if (err instanceof AggregateError) {
+    console.error(`${err.errors.length} requests failed:`)
+    for (const e of err.errors) {
+      console.error(e)
+    }
+  }
+}
+
+// Compare with map (serial) vs parallel (concurrent)
+// map: item 1 → item 2 → item 3 → ...  (sequential)
+// parallel(3, ...): up to 3 items run at the same time
+```

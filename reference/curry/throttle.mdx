@@ -1,0 +1,53 @@
+---
+title: "throttle — limit function calls by time interval"
+description: "Wrap a function so it executes at most once per interval, dropping any calls that arrive while the throttle window is active instead of queuing them."
+---
+
+`throttle` invokes `func` immediately on the first call, then blocks all subsequent calls until `interval` milliseconds have elapsed. Calls that arrive during the cooldown window are silently dropped — unlike `debounce`, which delays and coalesces calls, `throttle` always fires instantly on the first invocation and enforces a minimum gap between executions. Use it for scroll handlers, resize listeners, or any high-frequency event where you want regular execution at a capped rate.
+
+```typescript
+function throttle<TArgs extends any[]>(
+  { interval }: { interval: number },
+  func: (...args: TArgs) => any
+): ThrottledFunction<TArgs>
+```
+
+<ParamField path="interval" type="number" required>
+  Milliseconds that must pass after each invocation before `func` can be called again.
+</ParamField>
+
+<ParamField path="func" type="(...args: TArgs) => any" required>
+  The function to throttle. Called immediately on the first invocation within each interval window.
+</ParamField>
+
+Returns a `ThrottledFunction<TArgs>` with the following members:
+
+- `(...args: TArgs): void` — call the function; does nothing if currently throttled.
+- `isThrottled(): boolean` — returns `true` if the interval window is still active and calls are being blocked.
+
+```typescript
+import { throttle } from 'radash'
+
+const onScroll = throttle({ interval: 200 }, (event: Event) => {
+  console.log('scroll position:', window.scrollY)
+})
+
+// Fires immediately, then at most once every 200 ms
+window.addEventListener('scroll', onScroll)
+
+// Check whether the throttle is currently blocking calls
+onScroll(new Event('scroll'))
+onScroll.isThrottled()  // => true (within the 200 ms window)
+
+// Throttled API call — prevent hammering the server on rapid user actions
+const saveSettings = throttle({ interval: 1000 }, async (settings: object) => {
+  await fetch('/api/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  })
+})
+
+saveSettings({ theme: 'dark' })   // fires immediately
+saveSettings({ theme: 'light' })  // dropped — still within 1000 ms window
+// After 1000 ms: next call will fire again
+```

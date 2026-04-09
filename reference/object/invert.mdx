@@ -1,0 +1,42 @@
+---
+title: "invert — swap an object's keys and values"
+description: "Return a new object with every key-value pair flipped so that each original value becomes the key and each original key becomes the value."
+---
+
+`invert` produces a new object where the roles of keys and values are exchanged. Every value in the source object becomes a key in the result, and the key it was associated with becomes the new value. Because object keys must be unique, passing an object with duplicate values will cause only one of those entries to survive — the last one wins in iteration order.
+
+```typescript
+function invert<
+  TKey extends string | number | symbol,
+  TValue extends string | number | symbol
+>(obj: Record<TKey, TValue>): Record<TValue, TKey>
+```
+
+<ParamField path="obj" type="Record<TKey, TValue>" required>
+  The source object to invert. Both keys and values must be valid key types: `string`, `number`, or `symbol`.
+</ParamField>
+
+Returns a new `Record<TValue, TKey>` where every original value is a key and every original key is a value.
+
+```typescript
+import { invert } from 'radash'
+
+// Simple string map
+const roles = { admin: 'a', editor: 'e', viewer: 'v' }
+invert(roles)
+// => { a: 'admin', e: 'editor', v: 'viewer' }
+
+// Numeric values become string keys
+const codes = { red: 1, green: 2, blue: 3 }
+invert(codes)
+// => { '1': 'red', '2': 'green', '3': 'blue' }
+
+// Duplicate values — last key wins
+const dup = { a: 'x', b: 'x', c: 'y' }
+invert(dup)
+// => { x: 'b', y: 'c' }
+
+// Empty object
+invert({})
+// => {}
+```

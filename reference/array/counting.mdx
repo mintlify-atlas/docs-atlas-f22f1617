@@ -1,0 +1,54 @@
+---
+title: "counting — count occurrences by identity"
+description: "Build a frequency map from an array by running each element through an identity function. Returns a record mapping each key to its occurrence count."
+---
+
+`counting` iterates an array once and returns a plain object where each key is a value produced by your `identity` function and each value is the number of times that key appeared. It is useful for histograms, vote tallies, tag frequencies, and any scenario where you need to know how many items share a common attribute.
+
+```typescript
+function counting<T, TId extends string | number | symbol>(
+  list: readonly T[],
+  identity: (item: T) => TId
+): Record<TId, number>
+```
+
+<ParamField path="list" type="readonly T[]" required>
+  The array to build a frequency map from. Returns an empty object for a falsy value.
+</ParamField>
+
+<ParamField path="identity" type="(item: T) => TId" required>
+  A function that maps each element to a string, number, or symbol key. Elements that produce the same key are counted together.
+</ParamField>
+
+Returns a `Record<TId, number>` mapping each distinct key to its occurrence count.
+
+```typescript
+import { counting } from 'radash'
+
+// Count primitive values
+const fruits = ['apple', 'banana', 'apple', 'cherry', 'banana', 'apple']
+const freq = counting(fruits, f => f)
+// => { apple: 3, banana: 2, cherry: 1 }
+
+// Count by object property
+type Order = { status: 'pending' | 'shipped' | 'delivered'; id: number }
+const orders: Order[] = [
+  { id: 1, status: 'pending' },
+  { id: 2, status: 'shipped' },
+  { id: 3, status: 'pending' },
+  { id: 4, status: 'delivered' },
+  { id: 5, status: 'shipped' },
+]
+const byStatus = counting(orders, o => o.status)
+// => { pending: 2, shipped: 2, delivered: 1 }
+
+// Count by computed key
+type Product = { category: string; price: number }
+const products: Product[] = [
+  { category: 'electronics', price: 299 },
+  { category: 'clothing', price: 49 },
+  { category: 'electronics', price: 799 },
+]
+const byCategory = counting(products, p => p.category)
+// => { electronics: 2, clothing: 1 }
+```

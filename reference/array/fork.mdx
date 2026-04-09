@@ -1,0 +1,51 @@
+---
+title: "fork — split an array into two by condition"
+description: "Partition an array into two separate arrays based on a predicate: the first holds items where the condition is true, the second holds the rest."
+---
+
+`fork` passes every element through a boolean condition function and routes it into one of two output arrays. Items for which the condition returns `true` go into the first array; all others go into the second. Both arrays are returned together as a tuple, making destructuring assignment natural.
+
+```typescript
+function fork<T>(
+  list: readonly T[],
+  condition: (item: T) => boolean
+): [T[], T[]]
+```
+
+<ParamField path="list" type="readonly T[]" required>
+  The source array to partition. Returns `[[], []]` when the list is empty or nullish.
+</ParamField>
+
+<ParamField path="condition" type="(item: T) => boolean" required>
+  A predicate function called for each element. Elements that return `true` are placed in the first output array; those that return `false` go into the second.
+</ParamField>
+
+Returns a tuple `[T[], T[]]` where the first array contains items matching the condition and the second contains the remainder.
+
+```typescript
+import { fork } from 'radash'
+
+// Even / odd split
+const numbers = [1, 2, 3, 4, 5, 6]
+const [evens, odds] = fork(numbers, n => n % 2 === 0)
+// evens => [2, 4, 6]
+// odds  => [1, 3, 5]
+
+// Active / inactive users
+type User = { name: string; active: boolean }
+const users: User[] = [
+  { name: 'Alice', active: true },
+  { name: 'Bob', active: false },
+  { name: 'Carol', active: true },
+  { name: 'Dave', active: false },
+]
+
+const [active, inactive] = fork(users, u => u.active)
+// active   => [{ name: 'Alice', active: true }, { name: 'Carol', active: true }]
+// inactive => [{ name: 'Bob', active: false }, { name: 'Dave', active: false }]
+
+// All items on same side
+const [passing, failing] = fork([10, 20, 30], n => n > 0)
+// passing => [10, 20, 30]
+// failing => []
+```

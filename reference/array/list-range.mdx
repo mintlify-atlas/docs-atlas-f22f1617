@@ -1,0 +1,80 @@
+---
+title: "list / range — generate sequences of values"
+description: "Produce sequences of values over a numeric range using an optional mapper or static value and a configurable step. range is a generator; list returns an array."
+---
+
+`range` is a generator that yields values one at a time as you iterate, while `list` eagerly collects the same sequence into an array. Both accept identical parameters: a start (or length), an optional end, an optional value or mapper function, and an optional step. When called with only one argument, the sequence runs from `0` to that number inclusive.
+
+```typescript
+function* range<T = number>(
+  startOrLength: number,
+  end?: number,
+  valueOrMapper?: T | ((i: number) => T),
+  step?: number
+): Generator<T>
+
+function list<T = number>(
+  startOrLength: number,
+  end?: number,
+  valueOrMapper?: T | ((i: number) => T),
+  step?: number
+): T[]
+```
+
+<ParamField path="startOrLength" type="number" required>
+  When `end` is provided, this is the inclusive start of the range. When `end` is omitted, this is treated as the inclusive end and the range starts at `0`.
+</ParamField>
+
+<ParamField path="end" type="number">
+  The inclusive end of the range. Required when you want a non-zero start.
+</ParamField>
+
+<ParamField path="valueOrMapper" type="T | ((i: number) => T)">
+  A static value to yield at every step, or a function that receives the current index and returns the value for that step. Defaults to the identity function `i => i`.
+</ParamField>
+
+<ParamField path="step" type="number">
+  How much to increment the index on each iteration. Defaults to `1`.
+</ParamField>
+
+`range` returns a `Generator<T>` that you can consume with `for...of` or spread. `list` returns a `T[]`.
+
+```typescript
+import { range, list } from 'radash'
+
+// range with a single argument: 0 through 3
+[...range(3)]
+// => [0, 1, 2, 3]
+
+// range with start and end
+[...range(0, 3)]
+// => [0, 1, 2, 3]
+
+// range with a mapper and step
+[...range(0, 3, (i: number) => i * 2, 2)]
+// => [0, 4]  (indices 0, 2 mapped to 0*2, 2*2)
+
+// list — same API, returns an array directly
+list(3)
+// => [0, 1, 2, 3]
+
+list(0, 3)
+// => [0, 1, 2, 3]
+
+// Static value repeated across the range
+list(0, 3, 'y')
+// => ['y', 'y', 'y', 'y']
+
+// Template string mapper
+list(0, 3, (i: number) => `item${i}`)
+// => ['item0', 'item1', 'item2', 'item3']
+
+// Step of 2
+list(0, 6, (i: number) => i, 2)
+// => [0, 2, 4, 6]
+
+// Consuming range lazily
+for (const n of range(0, 4)) {
+  console.log(n) // 0, 1, 2, 3, 4
+}
+```

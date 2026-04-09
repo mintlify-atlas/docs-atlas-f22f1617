@@ -1,0 +1,86 @@
+---
+title: "sort / alphabetical — sort arrays immutably"
+description: "Sort arrays by a numeric or string key without mutating the original. sort handles numeric ordering; alphabetical uses locale-aware string comparison."
+---
+
+`sort` and `alphabetical` both return a new sorted array, leaving the original untouched. Use `sort` when your comparison key is a number; use `alphabetical` when it is a string and you want locale-aware ordering via `localeCompare`. Both accept an optional direction argument so you can switch between ascending and descending without reversing the result yourself.
+
+```typescript
+function sort<T>(
+  array: readonly T[],
+  getter: (item: T) => number,
+  desc?: boolean
+): T[]
+
+function alphabetical<T>(
+  array: readonly T[],
+  getter: (item: T) => string,
+  dir?: 'asc' | 'desc'
+): T[]
+```
+
+### `sort` parameters
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to sort. Returns an empty array when the input is nullish.
+</ParamField>
+
+<ParamField path="getter" type="(item: T) => number" required>
+  A function that extracts a numeric sort key from each element.
+</ParamField>
+
+<ParamField path="desc" type="boolean" default="false">
+  When `true`, sorts in descending order. Defaults to ascending.
+</ParamField>
+
+### `alphabetical` parameters
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to sort. Returns an empty array when the input is nullish.
+</ParamField>
+
+<ParamField path="getter" type="(item: T) => string" required>
+  A function that extracts a string sort key from each element.
+</ParamField>
+
+<ParamField path="dir" type="'asc' | 'desc'" default="'asc'">
+  Sort direction. Defaults to `'asc'` (A → Z).
+</ParamField>
+
+Both functions return a new `T[]` sorted by the extracted key. The original array is never mutated.
+
+```typescript
+import { sort, alphabetical } from 'radash'
+
+// Sort numbers ascending (default)
+sort([3, 1, 4, 1, 5, 9, 2], n => n)
+// => [1, 1, 2, 3, 4, 5, 9]
+
+// Sort objects by a numeric field, descending
+type Product = { name: string; price: number }
+const products: Product[] = [
+  { name: 'Keyboard', price: 79 },
+  { name: 'Monitor', price: 399 },
+  { name: 'Mouse', price: 29 },
+]
+
+sort(products, p => p.price, true)
+// => [
+//   { name: 'Monitor', price: 399 },
+//   { name: 'Keyboard', price: 79 },
+//   { name: 'Mouse', price: 29 },
+// ]
+
+// Sort strings alphabetically (locale-aware)
+const fruits = ['banana', 'apple', 'cherry', 'apricot']
+alphabetical(fruits, f => f)
+// => ['apple', 'apricot', 'banana', 'cherry']
+
+// Sort objects by a string field, descending
+alphabetical(products, p => p.name, 'desc')
+// => [
+//   { name: 'Mouse', price: 29 },
+//   { name: 'Monitor', price: 399 },
+//   { name: 'Keyboard', price: 79 },
+// ]
+```

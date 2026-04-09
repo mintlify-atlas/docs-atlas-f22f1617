@@ -1,0 +1,187 @@
+---
+title: "Random and shuffle utilities in Radash"
+description: "Radash's random module provides random integer generation, draw (random element from an array), shuffle, and uid for generating random identifiers."
+keywords: ["random", "draw", "shuffle", "uid", "random number", "random string", "unique id"]
+---
+
+Radash's random module provides four utilities that cover the most common randomness needs in application code: generating a random integer within a range, picking a random element from an array, shuffling an array, and producing a random alphanumeric identifier. All four are thin wrappers over `Math.random()` and are suitable for application-level use, not cryptographic purposes.
+
+## Generating random integers
+
+`random(min, max)` returns a random integer between `min` and `max`, both inclusive.
+
+```typescript
+import { random } from 'radash'
+
+random(1, 10)    // any integer from 1 to 10
+random(0, 1)     // 0 or 1
+random(-5, 5)    // any integer from -5 to 5
+```
+
+**Common uses:**
+
+```typescript
+// Simulate dice
+const roll = () => random(1, 6)
+
+// Add jitter to a retry delay
+const delay = 1000 + random(-100, 100)
+
+// Pick a random index
+const index = random(0, array.length - 1)
+```
+
+<Warning>
+`random` uses `Math.random()` and is not cryptographically secure. Do not use it for tokens, keys, nonces, or any security-sensitive value. Use the Web Crypto API (`crypto.getRandomValues`) for those cases.
+</Warning>
+
+## Drawing a random element
+
+`draw` picks a uniformly random element from an array and returns `null` if the array is empty.
+
+```typescript
+import { draw } from 'radash'
+
+const colors = ['red', 'green', 'blue', 'yellow']
+
+draw(colors)   // one of: 'red', 'green', 'blue', 'yellow'
+draw([])       // null
+```
+
+The `null` return for empty arrays means you can handle that case without a prior length check:
+
+```typescript
+const winner = draw(participants)
+
+if (!winner) {
+  console.log('No participants entered')
+  return
+}
+
+console.log(`Winner: ${winner.name}`)
+```
+
+**Weighted selection:** `draw` does not support weights natively. To draw with probability proportional to weight, expand the array first:
+
+```typescript
+import { draw, flat } from 'radash'
+
+const weighted = [
+  { item: 'common', weight: 5 },
+  { item: 'rare', weight: 2 },
+  { item: 'legendary', weight: 1 },
+]
+
+const pool = flat(weighted.map(w => Array(w.weight).fill(w.item)))
+draw(pool)   // 'common' ~62.5%, 'rare' ~25%, 'legendary' ~12.5%
+```
+
+## Shuffling an array
+
+`shuffle` returns a new array with the same elements in a random order. It does not mutate the original.
+
+```typescript
+import { shuffle } from 'radash'
+
+const deck = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const shuffled = shuffle(deck)
+
+// deck is unchanged
+// shuffled is a new array in random order
+```
+
+`shuffle` uses a sort-based approach: each element is paired with a random float, the pairs are sorted, and the floats are discarded. This is not the Fisher-Yates algorithm and has a slightly non-uniform distribution, but is sufficient for most application use cases such as randomizing playlists, quiz questions, or display order.
+
+```typescript
+// Randomize quiz questions
+const quiz = shuffle(questions).slice(0, 10)
+
+// Rotate featured items
+const featured = shuffle(allProducts).slice(0, 3)
+```
+
+<Note>
+For truly uniform shuffles (e.g., card games, lotteries), prefer the Fisher-Yates algorithm. For UI randomization and non-critical ordering, `shuffle` is fine.
+</Note>
+
+## Generating unique identifiers
+
+`uid` generates a random alphanumeric string of the given length. An optional `specials` string adds additional characters to the character pool.
+
+```typescript
+import { uid } from 'radash'
+
+uid(8)                      // e.g. 'aB3kR7xQ'
+uid(16)                     // e.g. 'mN2pQzXwLr8vTcYe'
+uid(12, '!@#$%')            // e.g. 'aB3!kR7@xQ2#'
+```
+
+The character pool is `A-Z`, `a-z`, `0-9` plus any characters in `specials`. The `specials` string is appended directly, so you can include any printable characters.
+
+```typescript
+// Generate a token with symbols for extra entropy
+const token = uid(32, '-_')
+
+// Generate a numeric PIN
+const pin = uid(6, '0123456789').replace(/[a-zA-Z]/g, () =>
+  String(random(0, 9))
+)
+
+// Short correlation ID for logs
+const requestId = uid(8)
+```
+
+<Tip>
+`uid` is convenient for non-security identifiers like log correlation IDs, session display tokens, or test data. For authentication tokens, session IDs, or password reset links, use `crypto.randomUUID()` or `crypto.getRandomValues()`.
+</Tip>
+
+## Combining random utilities
+
+<AccordionGroup>
+  <Accordion title="Random sample without replacement">
+    ```typescript
+    import { shuffle } from 'radash'
+
+    function sample<T>(array: readonly T[], n: number): T[] {
+      return shuffle([...array]).slice(0, n)
+    }
+
+    // Pick 3 random winners from a list
+    const winners = sample(participants, 3)
+    ```
+  </Accordion>
+
+  <Accordion title="Random delay with jitter for retries">
+    ```typescript
+    import { random, sleep } from 'radash'
+
+    async function retryWithJitter<T>(fn: () => Promise<T>, attempts: number): Promise<T> {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await fn()
+        } catch (err) {
+          if (i === attempts - 1) throw err
+          const base = 100 * 2 ** i
+          await sleep(base + random(0, base))
+        }
+      }
+      throw new Error('unreachable')
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Generate test fixture data">
+    ```typescript
+    import { draw, uid, random, list } from 'radash'
+
+    const roles = ['admin', 'editor', 'viewer'] as const
+
+    const users = list(0, 9, () => ({
+      id: uid(8),
+      name: `User ${uid(4)}`,
+      role: draw(roles)!,
+      score: random(0, 100),
+    }))
+    ```
+  </Accordion>
+</AccordionGroup>

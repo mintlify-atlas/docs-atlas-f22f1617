@@ -1,0 +1,53 @@
+---
+title: "debounce — delay function until calls settle"
+description: "Wrap a function so it only executes after a specified period of silence, collapsing rapid repeated calls into a single invocation once the calls stop."
+---
+
+`debounce` returns a new function that postpones calling `func` until `delay` milliseconds have passed since the last invocation. Every new call resets the timer. This makes it useful for responding to user input events — such as search fields or resize handlers — where you only want to act after activity settles. The returned function also exposes `cancel`, `isPending`, and `flush` for finer control.
+
+```typescript
+function debounce<TArgs extends any[]>(
+  { delay }: { delay: number },
+  func: (...args: TArgs) => any
+): DebounceFunction<TArgs>
+```
+
+<ParamField path="delay" type="number" required>
+  Milliseconds to wait after the last call before invoking `func`.
+</ParamField>
+
+<ParamField path="func" type="(...args: TArgs) => any" required>
+  The function to debounce. Called with the arguments from the most recent invocation once the delay has elapsed.
+</ParamField>
+
+Returns a `DebounceFunction<TArgs>` with the following members:
+
+- `(...args: TArgs): void` — schedule a call; resets the timer if already pending.
+- `cancel(): void` — permanently stop debouncing; subsequent calls pass through to `func` immediately.
+- `isPending(): boolean` — returns `true` if a call is currently queued.
+- `flush(...args: TArgs): void` — invoke `func` immediately with the given arguments, bypassing the delay.
+
+```typescript
+import { debounce } from 'radash'
+
+const search = debounce({ delay: 300 }, (query: string) => {
+  console.log('searching for', query)
+})
+
+// Rapid calls — only the last one fires after 300 ms of silence
+search('r')
+search('ra')
+search('radash')
+// => logs: searching for radash (once, after 300 ms)
+
+// Check whether a call is waiting
+search('hello')
+search.isPending()  // => true
+
+// Force execution immediately without waiting
+search.flush('immediate')  // => logs: searching for immediate right away
+
+// Stop debouncing — all future calls pass through directly
+search.cancel()
+search('direct')  // => logs: searching for direct immediately
+```

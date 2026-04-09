@@ -1,0 +1,64 @@
+---
+title: "partial / partob — pre-fill function arguments"
+description: "Lock in leading positional arguments with partial, or pre-fill named properties of a single-object argument with partob, returning a shorter-arity function."
+---
+
+`partial` and `partob` both create partially applied functions, but target different calling conventions. Use `partial` for functions that take positional arguments — you supply the leading arguments upfront and the returned function accepts the rest. Use `partob` for functions that take a single object argument — you supply some of the object's keys upfront and the returned function accepts the remaining keys.
+
+```typescript
+function partial<T extends any[], TA extends Partial<T>, R>(
+  fn: (...args: T) => R,
+  ...args: TA
+): (...rest: RemoveItemsInFront<T, TA>) => R
+
+function partob<T, K, PartialArgs extends Partial<T>>(
+  fn: (args: T) => K,
+  argobj: PartialArgs
+): (restobj: Omit<T, keyof PartialArgs>) => K
+```
+
+<ParamField path="fn" type="(...args: T) => R" required>
+  The function to partially apply.
+</ParamField>
+
+<ParamField path="args" type="TA (partial leading arguments)" required>
+  The leading positional arguments to pre-fill. `partial` accepts any number of arguments here, up to (but not including) the full arity of `fn`.
+</ParamField>
+
+<ParamField path="argobj" type="PartialArgs" required>
+  For `partob`: a partial object containing the keys you want to lock in. The returned function will require the remaining keys.
+</ParamField>
+
+Both functions return a new function. `partial` returns a function that accepts the remaining positional arguments. `partob` returns a function that accepts an object with the remaining keys.
+
+```typescript
+import { partial, partob } from 'radash'
+
+// partial — positional arguments
+const add = (a: number, b: number) => a + b
+const add10 = partial(add, 10)
+add10(5)   // => 15
+add10(32)  // => 42
+
+// partial with multiple pre-filled arguments
+const greet = (greeting: string, name: string, punctuation: string) =>
+  `${greeting}, ${name}${punctuation}`
+
+const hello = partial(greet, 'Hello')
+hello('Alice', '!')  // => 'Hello, Alice!'
+
+const helloAlice = partial(greet, 'Hello', 'Alice')
+helloAlice('.')  // => 'Hello, Alice.'
+
+// partob — object argument
+type CreateUserArgs = { name: string; role: string; active: boolean }
+const createUser = (args: CreateUserArgs) => args
+
+const createAdmin = partob(createUser, { role: 'admin', active: true })
+createAdmin({ name: 'Alice' })
+// => { name: 'Alice', role: 'admin', active: true }
+
+const createGuest = partob(createUser, { role: 'guest', active: false })
+createGuest({ name: 'Bob' })
+// => { name: 'Bob', role: 'guest', active: false }
+```

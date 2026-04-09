@@ -1,0 +1,47 @@
+---
+title: "keys — list all deep key paths in an object"
+description: "Recursively collect every leaf key path in an object or array and return them as an array of dot-notation strings, including paths through nested arrays."
+---
+
+`keys` walks an object depth-first and returns a flat array of dot-notation path strings — one for every leaf value. Nested objects are traversed recursively, and array elements are represented by their numeric index as a path segment (e.g. `children.0.name`). The result is compatible with `get`, `set`, `crush`, and `construct`.
+
+```typescript
+function keys<TValue extends object>(value: TValue): string[]
+```
+
+<ParamField path="value" type="TValue" required>
+  The object to walk. Nested objects and arrays at any depth are all resolved to their leaf paths. Returns an empty array for falsy input.
+</ParamField>
+
+Returns a `string[]` of dot-notation paths, one per leaf value in the object.
+
+```typescript
+import { keys } from 'radash'
+
+// Flat object
+keys({ name: 'ra', age: 5000 })
+// => ['name', 'age']
+
+// Nested object
+keys({ name: 'ra', address: { city: 'Heliopolis', country: 'Egypt' } })
+// => ['name', 'address.city', 'address.country']
+
+// Nested array
+keys({ name: 'ra', children: [{ name: 'hathor' }] })
+// => ['name', 'children.0.name']
+
+// Multiple array items
+keys({
+  name: 'ra',
+  children: [{ name: 'hathor' }, { name: 'thoth' }],
+})
+// => ['name', 'children.0.name', 'children.1.name']
+
+// Deep nesting
+keys({ a: { b: { c: 42 } } })
+// => ['a.b.c']
+
+// Empty / falsy
+keys({})   // => []
+keys(null) // => []
+```

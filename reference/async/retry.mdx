@@ -1,0 +1,63 @@
+---
+title: "retry — retry an async function with backoff"
+description: "Automatically re-run a failing async function up to a configured number of times, with optional fixed delay or exponential backoff between attempts."
+---
+
+`retry` calls an async function and, if it throws, calls it again up to `times` attempts. You can add a fixed delay between attempts, provide a custom `backoff` function for exponential or custom spacing, or call the `exit` callback from inside the function to stop retrying immediately and rethrow the error as-is.
+
+```typescript
+async function retry<TResponse>(
+  options: {
+    times?: number
+    delay?: number | null
+    backoff?: (count: number) => number
+  },
+  func: (exit: (err: any) => void) => Promise<TResponse>
+): Promise<TResponse>
+```
+
+<ParamField path="options.times" type="number" default="3">
+  Maximum number of attempts before giving up and rethrowing the last error.
+</ParamField>
+
+<ParamField path="options.delay" type="number | null">
+  Fixed number of milliseconds to wait between attempts. When `null` or omitted, attempts run without delay. Applied in addition to `backoff` when both are set.
+</ParamField>
+
+<ParamField path="options.backoff" type="(count: number) => number">
+  A function that receives the current attempt number (starting at `1`) and returns the number of milliseconds to wait before the next attempt. Use this for exponential backoff or any custom retry spacing.
+</ParamField>
+
+<ParamField path="func" type="(exit: (err: any) => void) => Promise<TResponse>" required>
+  The async function to execute. Receives an `exit` callback — call `exit(err)` to stop retrying immediately and rethrow `err` without waiting for further attempts.
+</ParamField>
+
+Returns a `Promise<TResponse>` that resolves to the function's return value on the first successful attempt. Throws the last error if all attempts are exhausted, or the error passed to `exit` if called.
+
+```typescript
+import { retry } from 'radash'
+
+// Retry up to 3 times with no delay (default)
+const user = await retry({}, () => fetchUser(userId))
+
+// Retry up to 5 times with a 200 ms pause between each attempt
+const data = await retry({ times: 5, delay: 200 }, () => fetchData())
+
+// Exponential backoff: 50 ms, 100 ms, 200 ms, 400 ms, ...
+const result = await retry(
+  { times: 5, backoff: (count) => 50 * 2 ** count },
+  () => callExternalApi()
+)
+
+// Stop retrying immediately on a 401 — no point retrying auth errors
+const profile = await retry(
+  { times: 3 },
+  async (exit) => {
+    const res = await fetch(`/api/profile/${userId}`)
+    if (res.status === 401) {
+      exit(new Error('Unauthorized — check your credentials'))
+    }
+    return res.json()
+  }
+)
+```

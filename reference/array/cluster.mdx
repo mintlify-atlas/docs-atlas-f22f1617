@@ -1,0 +1,51 @@
+---
+title: "cluster — split array into chunks of fixed size"
+description: "Divide an array into consecutive sub-arrays of a given size. The final chunk contains the remaining elements when the array does not divide evenly."
+---
+
+`cluster` partitions a flat array into groups of up to `size` elements each. The last group may be shorter than `size` if the array length is not a multiple of the chunk size. The original array is never modified.
+
+```typescript
+function cluster<T>(list: readonly T[], size: number = 2): T[][]
+```
+
+<ParamField path="list" type="readonly T[]" required>
+  The array to split into chunks.
+</ParamField>
+
+<ParamField path="size" type="number" default="2">
+  The maximum number of elements per chunk. Defaults to `2`.
+</ParamField>
+
+Returns a `T[][]` where each inner array contains at most `size` elements.
+
+```typescript
+import { cluster } from 'radash'
+
+// Even split
+const evens = cluster([1, 2, 3, 4, 5, 6], 2)
+// => [[1, 2], [3, 4], [5, 6]]
+
+// Uneven split — last chunk is shorter
+const uneven = cluster([1, 2, 3, 4, 5], 2)
+// => [[1, 2], [3, 4], [5]]
+
+// Chunk size of 3
+const triplets = cluster(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3)
+// => [['a', 'b', 'c'], ['d', 'e', 'f'], ['g']]
+
+// Default size (2)
+const pairs = cluster([10, 20, 30, 40])
+// => [[10, 20], [30, 40]]
+
+// Paginating records
+type User = { id: number; name: string }
+const users: User[] = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Carol' },
+  { id: 4, name: 'Dave' },
+]
+const pages = cluster(users, 2)
+// => [[{ id: 1, ... }, { id: 2, ... }], [{ id: 3, ... }, { id: 4, ... }]]
+```

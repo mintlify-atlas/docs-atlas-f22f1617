@@ -1,0 +1,51 @@
+---
+title: "shake — remove unwanted values from an object"
+description: "Return a new object with entries removed according to a filter function, defaulting to stripping all keys whose value is undefined."
+---
+
+`shake` produces a new object that omits entries whose values fail a test. By default the test is `value === undefined`, so calling `shake` without a second argument is a convenient way to strip all `undefined` entries from an object. Pass a custom `filter` function to remove any set of values — nulls, empty strings, falsy values, or anything else your predicate matches.
+
+```typescript
+function shake<RemovedKeys extends string, T>(
+  obj: T,
+  filter?: (value: any) => boolean
+): Omit<T, RemovedKeys>
+```
+
+<ParamField path="obj" type="T" required>
+  The source object to filter. Returns an empty object when `obj` is falsy.
+</ParamField>
+
+<ParamField path="filter" type="(value: any) => boolean">
+  A predicate called for each value in `obj`. When it returns `true`, that entry is **excluded** from the result. Defaults to `x => x === undefined`, which removes all `undefined` values.
+</ParamField>
+
+Returns a new object of type `Omit<T, RemovedKeys>` containing only the entries that did **not** match the filter.
+
+```typescript
+import { shake } from 'radash'
+
+// Default — remove undefined
+const a = { name: 'ra', age: undefined, role: 'admin' }
+shake(a)
+// => { name: 'ra', role: 'admin' }
+
+// Custom filter — remove null values
+const b = { name: 'hathor', age: null, role: 'editor' }
+shake(b, (v) => v === null)
+// => { name: 'hathor', role: 'editor' }
+
+// Custom filter — remove all falsy values
+const c = { name: 'thoth', active: false, score: 0, tag: '' }
+shake(c, (v) => !v)
+// => { name: 'thoth' }
+
+// Custom filter — remove values matching a type check
+const d = { id: 1, name: 'ra', nested: { deep: true } }
+shake(d, (v) => typeof v === 'object')
+// => { id: 1, name: 'ra' }
+
+// Falsy input
+shake(null)  // => {}
+shake(undefined) // => {}
+```

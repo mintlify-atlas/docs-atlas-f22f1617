@@ -1,0 +1,65 @@
+---
+title: "pick / omit — select or exclude object keys"
+description: "Return a new object containing only the keys you list with pick, or a new object with those keys removed with omit — both are fully type-safe."
+---
+
+`pick` and `omit` are complementary functions for narrowing an object to a subset of its properties. `pick` creates a new object that contains only the keys you specify. `omit` creates a new object with those keys removed. Neither function mutates the original, and both carry full TypeScript types so the returned object reflects exactly which keys are present or absent.
+
+```typescript
+function pick<T extends object, TKeys extends keyof T>(
+  obj: T,
+  keys: TKeys[]
+): Pick<T, TKeys>
+
+function omit<T, TKeys extends keyof T>(
+  obj: T,
+  keys: TKeys[]
+): Omit<T, TKeys>
+```
+
+<ParamField path="obj" type="T" required>
+  The source object to select from or filter. Returns an empty object when `obj` is falsy.
+</ParamField>
+
+<ParamField path="keys" type="TKeys[]" required>
+  An array of key names to include (`pick`) or exclude (`omit`). Only own properties are considered; keys not present on `obj` are silently ignored by `pick`.
+</ParamField>
+
+`pick` returns a `Pick<T, TKeys>` containing only the listed keys. `omit` returns an `Omit<T, TKeys>` with those keys removed. Both return types are derived from `T`, preserving all value types.
+
+```typescript
+import { pick, omit } from 'radash'
+
+type User = {
+  id: number
+  name: string
+  email: string
+  role: string
+}
+
+const user: User = { id: 1, name: 'Ra', email: 'ra@sun.eg', role: 'admin' }
+
+// pick — keep only specified keys
+pick(user, ['id', 'name'])
+// => { id: 1, name: 'Ra' }
+
+// pick — key not on object is ignored
+pick(user, ['id', 'name', 'missing' as keyof User])
+// => { id: 1, name: 'Ra' }
+
+// omit — remove specified keys
+omit(user, ['email', 'role'])
+// => { id: 1, name: 'Ra' }
+
+// omit — empty keys array returns a copy
+omit(user, [])
+// => { id: 1, name: 'Ra', email: 'ra@sun.eg', role: 'admin' }
+
+// Typical use: strip sensitive fields before serialising
+const publicUser = omit(user, ['email'])
+// => { id: 1, name: 'Ra', role: 'admin' }
+
+// Typical use: extract only what an API response needs
+const idAndName = pick(user, ['id', 'name'])
+// => { id: 1, name: 'Ra' }
+```

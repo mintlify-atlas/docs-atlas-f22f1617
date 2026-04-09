@@ -1,0 +1,58 @@
+---
+title: "diff — find items in first list not in second"
+description: "Return all elements from the root array that do not appear in the other array, with an optional identity function for object comparison."
+---
+
+`diff` computes a set-style difference: it returns every element in `root` for which no matching element exists in `other`. By default, elements are compared by reference/value. Supply an `identity` function to compare by a derived key — useful when working with objects.
+
+```typescript
+function diff<T>(
+  root: readonly T[],
+  other: readonly T[],
+  identity?: (item: T) => string | number | symbol
+): T[]
+```
+
+<ParamField path="root" type="readonly T[]" required>
+  The base array. Only elements from this array are included in the result.
+</ParamField>
+
+<ParamField path="other" type="readonly T[]" required>
+  The array to subtract. Any element whose identity matches an element in `other` is excluded from the result.
+</ParamField>
+
+<ParamField path="identity" type="(item: T) => string | number | symbol">
+  Optional function that maps each element to a comparable key. Defaults to using the element itself as the key (suitable for primitives).
+</ParamField>
+
+Returns a `T[]` containing elements from `root` that have no match in `other`.
+
+```typescript
+import { diff } from 'radash'
+
+// Primitive diff
+const all = [1, 2, 3, 4, 5]
+const existing = [2, 4]
+const missing = diff(all, existing)
+// => [1, 3, 5]
+
+// String diff
+const expected = ['read', 'write', 'delete']
+const actual = ['read', 'write']
+const gaps = diff(expected, actual)
+// => ['delete']
+
+// Object diff using an identity function
+type Permission = { id: number; name: string }
+const required: Permission[] = [
+  { id: 1, name: 'read' },
+  { id: 2, name: 'write' },
+  { id: 3, name: 'delete' },
+]
+const granted: Permission[] = [
+  { id: 1, name: 'read' },
+  { id: 3, name: 'delete' },
+]
+const denied = diff(required, granted, p => p.id)
+// => [{ id: 2, name: 'write' }]
+```

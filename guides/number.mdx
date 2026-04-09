@@ -1,0 +1,148 @@
+---
+title: "Number utilities in Radash"
+description: "Radash's number module provides inRange for boundary checks and toInt/toFloat for safe parsing with configurable fallback defaults."
+keywords: ["number", "inRange", "toInt", "toFloat", "parse", "range check", "safe default"]
+---
+
+Radash's number module is small by design. It covers the two most common gaps in JavaScript's built-in number handling: checking whether a value falls within a range, and safely parsing strings or unknown values into numbers without producing `NaN`.
+
+## Range checks
+
+### inRange
+
+`inRange` has two overloads depending on how many arguments you pass.
+
+**Two-argument form:** checks whether `number` is in `[0, end)` — zero is inclusive, `end` is exclusive.
+
+```typescript
+import { inRange } from 'radash'
+
+inRange(1, 5)     // true   — 1 is in [0, 5)
+inRange(0, 5)     // true   — 0 is inclusive
+inRange(5, 5)     // false  — end is exclusive
+inRange(-1, 5)    // false  — below zero
+```
+
+**Three-argument form:** checks whether `number` is in `[start, end)` — `start` is inclusive, `end` is exclusive. The range can be ascending or descending.
+
+```typescript
+inRange(5, 1, 10)    // true   — 5 is in [1, 10)
+inRange(1, 1, 10)    // true   — start is inclusive
+inRange(10, 1, 10)   // false  — end is exclusive
+inRange(5, 10, 1)    // true   — descending range works too
+```
+
+<Note>
+`inRange` performs a type safety check on all arguments. If any argument is not a number, it returns `false` rather than throwing.
+</Note>
+
+**Common patterns:**
+
+```typescript
+// Validate pagination input
+function validatePage(page: unknown, totalPages: number): boolean {
+  return typeof page === 'number' && inRange(page, 1, totalPages + 1)
+}
+
+// Clamp a value into a range
+function clamp(n: number, min: number, max: number): number {
+  if (inRange(n, min, max + 1)) return n
+  return n < min ? min : max
+}
+
+// Check an HTTP status code category
+const isClientError = (status: number) => inRange(status, 400, 500)
+const isServerError = (status: number) => inRange(status, 500, 600)
+```
+
+## Safe parsing
+
+### toInt
+
+`toInt` parses a value as an integer. If parsing fails (the value is `null`, `undefined`, or produces `NaN`), it returns a default value.
+
+```typescript
+import { toInt } from 'radash'
+
+toInt('42')        // 42
+toInt('42.9')      // 42     (truncates decimal)
+toInt(3.7)         // 3
+toInt('abc')       // 0      (default)
+toInt(null)        // 0      (default)
+toInt(undefined)   // 0      (default)
+
+// Custom default
+toInt('abc', -1)   // -1
+toInt(null, null)  // null
+```
+
+### toFloat
+
+`toFloat` parses a value as a floating-point number, returning a default on failure.
+
+```typescript
+import { toFloat } from 'radash'
+
+toFloat('3.14')      // 3.14
+toFloat('3')         // 3
+toFloat('abc')       // 0.0    (default)
+toFloat(null)        // 0.0    (default)
+
+// Custom default
+toFloat('abc', -1)   // -1
+toFloat(null, null)  // null
+```
+
+<Tip>
+Pass `null` as the default value to distinguish "unparseable" from `0` in cases where zero is a valid result.
+</Tip>
+
+## Combining with validation
+
+```typescript
+import { toInt, toFloat, inRange } from 'radash'
+
+interface PriceInput {
+  quantity: unknown
+  unitPrice: unknown
+}
+
+function parseOrderLine(input: PriceInput) {
+  const qty = toInt(input.quantity, null)
+  const price = toFloat(input.unitPrice, null)
+
+  if (qty === null || !inRange(qty, 1, 1001)) {
+    throw new Error('Quantity must be between 1 and 1000')
+  }
+  if (price === null || !inRange(price, 0.01, 100_000)) {
+    throw new Error('Price out of range')
+  }
+
+  return { quantity: qty, unitPrice: price, total: qty * price }
+}
+```
+
+<AccordionGroup>
+  <Accordion title="Parsing query string parameters">
+    ```typescript
+    import { toInt, toFloat } from 'radash'
+
+    const params = new URLSearchParams(window.location.search)
+
+    const page = toInt(params.get('page'), 1)
+    const limit = toInt(params.get('limit'), 20)
+    const minPrice = toFloat(params.get('minPrice'), 0)
+    ```
+  </Accordion>
+
+  <Accordion title="Validating environment variables">
+    ```typescript
+    import { toInt, inRange } from 'radash'
+
+    const port = toInt(process.env.PORT, 3000)
+    if (!inRange(port, 1, 65536)) {
+      throw new Error(`Invalid PORT: ${port}`)
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

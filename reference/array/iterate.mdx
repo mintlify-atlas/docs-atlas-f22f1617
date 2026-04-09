@@ -1,0 +1,48 @@
+---
+title: "iterate — accumulate a value over N iterations"
+description: "Call a reducer function exactly N times, threading the previous return value into each call. Returns the final accumulated result. Iteration count starts at 1."
+---
+
+`iterate` is like a `for` loop expressed as a function. It calls `func` once per iteration, passing the current accumulated value and the iteration number, and uses whatever `func` returns as the input to the next call. The loop runs `count` times and returns the final accumulated value. The iteration counter starts at **1** and ends at `count` — it is not zero-indexed.
+
+```typescript
+function iterate<T>(
+  count: number,
+  func: (currentValue: T, iteration: number) => T,
+  initValue: T
+): T
+```
+
+<ParamField path="count" type="number" required>
+  The number of times to call `func`. Iteration numbers passed to `func` run from `1` to `count` inclusive.
+</ParamField>
+
+<ParamField path="func" type="(currentValue: T, iteration: number) => T" required>
+  A function called on every iteration. Receives the accumulated value from the previous iteration (or `initValue` on the first call) and the 1-based iteration number. Its return value becomes the next accumulated value.
+</ParamField>
+
+<ParamField path="initValue" type="T" required>
+  The starting value passed to `func` on the first iteration.
+</ParamField>
+
+Returns the final accumulated value of type `T` after all `count` iterations.
+
+```typescript
+import { iterate } from 'radash'
+
+// Sum 1 + 2 + 3 + 4 + 5
+const total = iterate(5, (acc, i) => acc + i, 0)
+// => 15
+
+// Build a string step by step
+const sentence = iterate(3, (acc, i) => `${acc} step${i}`, 'start:')
+// => 'start: step1 step2 step3'
+
+// Double a value N times (2^4 = 16)
+const doubled = iterate(4, (acc) => acc * 2, 1)
+// => 16
+
+// Collect iteration numbers into an array
+const iterations = iterate(5, (acc, i) => [...acc, i], [] as number[])
+// => [1, 2, 3, 4, 5]
+```

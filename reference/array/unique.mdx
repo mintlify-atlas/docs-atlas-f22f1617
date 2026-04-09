@@ -1,0 +1,50 @@
+---
+title: "unique — deduplicate an array by value or key"
+description: "Return a new array with duplicate items removed, using strict equality for primitives or an optional key function to deduplicate arrays of objects."
+---
+
+`unique` iterates the array and keeps only the first occurrence of each value. For primitive arrays, duplicates are detected by strict equality. For object arrays, supply a `toKey` function that maps each element to a comparable key — only the first item for each key is retained. The original array order is preserved and the input is not mutated.
+
+```typescript
+function unique<T, K extends string | number | symbol>(
+  array: readonly T[],
+  toKey?: (item: T) => K
+): T[]
+```
+
+<ParamField path="array" type="readonly T[]" required>
+  The source array to deduplicate. Duplicate detection preserves insertion order — the first occurrence wins.
+</ParamField>
+
+<ParamField path="toKey" type="(item: T) => K">
+  An optional function that derives a comparable key from each element. When omitted, the element itself is used as the key, which works correctly for primitive values.
+</ParamField>
+
+Returns a new `T[]` containing only the first occurrence of each unique value or key. The original array is not modified.
+
+```typescript
+import { unique } from 'radash'
+
+// Deduplicate primitives
+unique([1, 2, 2, 3, 1, 4])
+// => [1, 2, 3, 4]
+
+unique(['a', 'b', 'a', 'c', 'b'])
+// => ['a', 'b', 'c']
+
+// Deduplicate objects by a field value
+type User = { id: number; name: string }
+const users: User[] = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 1, name: 'Alice (duplicate)' },
+  { id: 3, name: 'Carol' },
+]
+
+unique(users, u => u.id)
+// => [
+//   { id: 1, name: 'Alice' },
+//   { id: 2, name: 'Bob' },
+//   { id: 3, name: 'Carol' },
+// ]
+```

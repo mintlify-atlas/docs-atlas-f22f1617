@@ -1,0 +1,351 @@
+---
+title: "Get started with Radash in minutes"
+description: "Hands-on quickstart for Radash covering arrays, async operations, object manipulation, type guards, and functional patterns like memoization and debounce."
+---
+
+Radash gives you a set of typed, pure utility functions you can drop into any TypeScript or JavaScript project. This guide walks through the most commonly used helpers across arrays, async operations, objects, type guards, and currying — all with working examples drawn directly from the library's source.
+
+<Steps>
+
+<Step title="Install and import">
+
+Install Radash from npm, then import only the functions you need. Every export is named, so your bundler will tree-shake anything you don't use.
+
+```bash
+npm install radash
+```
+
+```typescript
+import { sort, group, fork, objectify, select } from 'radash'
+```
+
+</Step>
+
+<Step title="Work with arrays">
+
+Radash's array utilities cover the most common transformations without mutating the original array.
+
+**`sort`** — Sort an array by a numeric getter. Pass `true` as the third argument for descending order.
+
+```typescript
+import { sort } from 'radash'
+
+type Product = { name: string; price: number }
+const products: Product[] = [
+  { name: 'Widget', price: 9.99 },
+  { name: 'Gadget', price: 24.99 },
+  { name: 'Doohickey', price: 4.49 },
+]
+
+const cheapestFirst = sort(products, p => p.price)
+// [{ name: 'Doohickey', price: 4.49 }, { name: 'Widget', price: 9.99 }, ...]
+
+const mostExpensiveFirst = sort(products, p => p.price, true)
+// [{ name: 'Gadget', price: 24.99 }, ...]
+```
+
+**`group`** — Bucket an array into a `Partial<Record<Key, T[]>>` by a key function.
+
+```typescript
+import { group } from 'radash'
+
+type Order = { id: number; status: 'pending' | 'shipped' | 'delivered' }
+const orders: Order[] = [
+  { id: 1, status: 'pending' },
+  { id: 2, status: 'shipped' },
+  { id: 3, status: 'pending' },
+  { id: 4, status: 'delivered' },
+]
+
+const byStatus = group(orders, o => o.status)
+// {
+//   pending:   [{ id: 1, ... }, { id: 3, ... }],
+//   shipped:   [{ id: 2, ... }],
+//   delivered: [{ id: 4, ... }],
+// }
+```
+
+**`fork`** — Split an array into two based on a condition. Returns `[matches, nonMatches]`.
+
+```typescript
+import { fork } from 'radash'
+
+const numbers = [1, 2, 3, 4, 5, 6]
+const [evens, odds] = fork(numbers, n => n % 2 === 0)
+// evens: [2, 4, 6]
+// odds:  [1, 3, 5]
+```
+
+**`objectify`** — Convert an array into a keyed record. Optionally provide a value mapper.
+
+```typescript
+import { objectify } from 'radash'
+
+type User = { id: number; name: string; role: string }
+const users: User[] = [
+  { id: 1, name: 'Alice', role: 'admin' },
+  { id: 2, name: 'Bob', role: 'viewer' },
+]
+
+// Key by id, keep full object as value (default)
+const byId = objectify(users, u => u.id)
+// { 1: { id: 1, name: 'Alice', role: 'admin' }, 2: { ... } }
+
+// Key by id, extract only the name
+const nameById = objectify(users, u => u.id, u => u.name)
+// { 1: 'Alice', 2: 'Bob' }
+```
+
+**`select`** — Filter and map in a single pass over the array.
+
+```typescript
+import { select } from 'radash'
+
+type Item = { label: string; value: number; active: boolean }
+const items: Item[] = [
+  { label: 'A', value: 10, active: true },
+  { label: 'B', value: 20, active: false },
+  { label: 'C', value: 30, active: true },
+]
+
+const activeValues = select(
+  items,
+  item => item.value,      // mapper
+  item => item.active      // condition
+)
+// [10, 30]
+```
+
+</Step>
+
+<Step title="Handle async operations safely">
+
+Radash provides helpers that make async code more predictable without deeply nested try/catch blocks.
+
+**`tryit`** — Wraps any function to return `[error, result]` instead of throwing. Works with both sync and async functions.
+
+```typescript
+import { tryit } from 'radash'
+
+async function fetchUser(id: number): Promise<{ name: string }> {
+  const res = await fetch(`/api/users/${id}`)
+  if (!res.ok) throw new Error('Not found')
+  return res.json()
+}
+
+const [err, user] = await tryit(fetchUser)(42)
+
+if (err) {
+  console.error('Failed to load user:', err.message)
+} else {
+  console.log('Loaded:', user.name)
+}
+```
+
+**`parallel`** — Run an async function over an array with a concurrency limit. Throws an `AggregateError` if any items fail.
+
+```typescript
+import { parallel } from 'radash'
+
+const userIds = [1, 2, 3, 4, 5]
+
+// Process at most 3 requests at a time
+const users = await parallel(3, userIds, async id => {
+  const res = await fetch(`/api/users/${id}`)
+  return res.json()
+})
+// users: array of resolved values, in original order
+```
+
+**`retry`** — Retry a failing async operation with optional delay and exponential backoff.
+
+```typescript
+import { retry } from 'radash'
+
+const data = await retry(
+  { times: 3, delay: 500 },
+  async exit => {
+    const res = await fetch('/api/unstable-endpoint')
+    if (res.status === 404) {
+      // Call exit() to stop retrying immediately
+      exit(new Error('Resource not found'))
+    }
+    return res.json()
+  }
+)
+```
+
+Use `backoff` instead of `delay` for exponential back-off:
+
+```typescript
+const data = await retry(
+  { times: 5, backoff: attempt => attempt * 200 },
+  async () => fetchSomething()
+)
+// Waits 200ms, 400ms, 600ms, 800ms between attempts
+```
+
+</Step>
+
+<Step title="Manipulate objects">
+
+Radash's object utilities let you pick, omit, deep-read, and clean up objects without mutation.
+
+**`pick`** — Create a new object with only the specified keys.
+
+```typescript
+import { pick } from 'radash'
+
+type Config = { host: string; port: number; debug: boolean; secret: string }
+const config: Config = { host: 'localhost', port: 3000, debug: true, secret: 'abc123' }
+
+const publicConfig = pick(config, ['host', 'port'])
+// { host: 'localhost', port: 3000 }
+```
+
+**`omit`** — Create a new object with the specified keys removed.
+
+```typescript
+import { omit } from 'radash'
+
+const safeConfig = omit(config, ['secret'])
+// { host: 'localhost', port: 3000, debug: true }
+```
+
+**`get`** — Safely read a deeply nested value using dot/bracket notation. Returns a default if the path does not exist.
+
+```typescript
+import { get } from 'radash'
+
+const data = {
+  user: {
+    profile: {
+      address: { city: 'Cairo' }
+    }
+  }
+}
+
+const city = get(data, 'user.profile.address.city', 'Unknown')
+// 'Cairo'
+
+const zip = get(data, 'user.profile.address.zip', 'N/A')
+// 'N/A'  ← default returned when path is missing
+```
+
+**`shake`** — Remove entries from an object that match a filter. Removes `undefined` by default.
+
+```typescript
+import { shake } from 'radash'
+
+const form = { name: 'Ada', email: undefined, age: null, role: 'admin' }
+
+const cleaned = shake(form)
+// { name: 'Ada', age: null, role: 'admin' }  ← undefined removed
+
+// Custom filter: remove null and undefined
+const strict = shake(form, v => v === null || v === undefined)
+// { name: 'Ada', role: 'admin' }
+```
+
+</Step>
+
+<Step title="Use type guards">
+
+The `typed` module exports predicate functions that narrow TypeScript types at runtime.
+
+```typescript
+import { isArray, isString, isEmpty } from 'radash'
+
+function processInput(value: unknown) {
+  if (isArray(value)) {
+    // value is narrowed to unknown[]
+    return value.map(String)
+  }
+
+  if (isString(value)) {
+    // value is narrowed to string
+    return value.toUpperCase()
+  }
+
+  return null
+}
+```
+
+**`isEmpty`** — Returns `true` for empty strings, arrays, objects, zero, null, undefined, invalid dates, and boolean `true`/`false`.
+
+```typescript
+import { isEmpty } from 'radash'
+
+isEmpty('')           // true
+isEmpty([])           // true
+isEmpty({})           // true
+isEmpty(0)            // true
+isEmpty(null)         // true
+isEmpty(undefined)    // true
+isEmpty('hello')      // false
+isEmpty([1, 2])       // false
+isEmpty({ a: 1 })     // false
+```
+
+Other available guards: `isObject`, `isFunction`, `isNumber`, `isInt`, `isFloat`, `isDate`, `isPromise`, `isSymbol`, `isPrimitive`, `isEqual`.
+
+</Step>
+
+<Step title="Apply memoization and debounce">
+
+The `curry` module includes `memo` for caching function results and `debounce` for rate-limiting calls.
+
+**`memo`** — Memoize a function so it only recomputes when called with new arguments. Optionally set a TTL in milliseconds.
+
+```typescript
+import { memo } from 'radash'
+
+const getUser = memo(async (id: number) => {
+  const res = await fetch(`/api/users/${id}`)
+  return res.json()
+})
+
+await getUser(1) // fetches from API
+await getUser(1) // returns cached result
+await getUser(2) // fetches from API (new argument)
+```
+
+With a TTL so cached values expire after 30 seconds:
+
+```typescript
+const cachedFetch = memo(
+  (url: string) => fetch(url).then(r => r.json()),
+  { ttl: 30_000 }
+)
+```
+
+**`debounce`** — Return a debounced version of a function that only fires after `delay` milliseconds of inactivity. Includes `cancel()`, `flush()`, and `isPending()` methods.
+
+```typescript
+import { debounce } from 'radash'
+
+const saveSearch = debounce({ delay: 300 }, (query: string) => {
+  console.log('Searching for:', query)
+})
+
+// Rapid calls — only the last one fires after 300ms of quiet
+saveSearch('r')
+saveSearch('ra')
+saveSearch('rad')
+saveSearch('radash') // ← this one executes
+
+// Cancel a pending call
+saveSearch.cancel()
+
+// Fire immediately without waiting
+saveSearch.flush('radash')
+```
+
+</Step>
+
+</Steps>
+
+## Next steps
+
+- Browse the full [API reference](/api-reference) for every function signature and option.
+- See [Installation](/installation) for import style options and TypeScript setup details.

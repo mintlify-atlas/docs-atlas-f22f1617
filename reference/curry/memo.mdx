@@ -1,0 +1,64 @@
+---
+title: "memo — memoize a function with optional TTL"
+description: "Cache a function's return values so repeated calls with the same arguments return the stored result instantly, with optional time-based cache expiration."
+---
+
+`memo` wraps a function and stores each result in an in-memory cache keyed by the call arguments. On subsequent calls with the same arguments the cached value is returned without executing the function again. You can provide a custom `key` function to control how arguments map to cache keys, and a `ttl` (time-to-live in milliseconds) after which a cached entry is considered stale and the function re-executes.
+
+```typescript
+function memo<TArgs extends any[], TResult>(
+  func: (...args: TArgs) => TResult,
+  options?: {
+    key?: (...args: TArgs) => string
+    ttl?: number
+  }
+): (...args: TArgs) => TResult
+```
+
+<ParamField path="func" type="(...args: TArgs) => TResult" required>
+  The function whose results you want to cache.
+</ParamField>
+
+<ParamField path="options.key" type="(...args: TArgs) => string">
+  A function that derives a string cache key from the call arguments. Defaults to `JSON.stringify({ args })` when omitted.
+</ParamField>
+
+<ParamField path="options.ttl" type="number">
+  Number of milliseconds before a cached result expires. When a cached entry is expired, the original function is called again and the result is re-cached. Omit for an indefinite cache.
+</ParamField>
+
+Returns a memoized version of `func` with the same type signature.
+
+```typescript
+import { memo } from 'radash'
+
+// Basic memoization — the heavy computation only runs once per unique input
+const expensiveCalc = memo((n: number) => {
+  console.log('computing...')
+  return n * n
+})
+
+expensiveCalc(4)  // logs: computing... => 16
+expensiveCalc(4)  // (no log) => 16  (cache hit)
+expensiveCalc(5)  // logs: computing... => 25
+
+// With TTL — cache expires after 1 second
+const fetchUser = memo(
+  async (id: string) => {
+    const res = await fetch(`/api/users/${id}`)
+    return res.json()
+  },
+  { ttl: 1000 }
+)
+
+// With a custom cache key — useful when arguments are objects
+type Filter = { status: string; page: number }
+const listItems = memo(
+  (filter: Filter) => fetchItems(filter),
+  { key: (filter) => `${filter.status}:${filter.page}` }
+)
+
+listItems({ status: 'active', page: 1 })  // fetches
+listItems({ status: 'active', page: 1 })  // cache hit
+listItems({ status: 'draft', page: 1 })   // fetches (different key)
+```
